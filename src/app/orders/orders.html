@@ -1,0 +1,164 @@
+<section class="checkout-hero">
+  <div>
+    <p-tag value="Checkout" severity="success" [rounded]="true" />
+    <h1>Checkout</h1>
+    <p>
+      Check your cart and fill in the delivery details.
+    </p>
+  </div>
+
+  <div class="summary-panel">
+    <span>Cart items</span>
+    <strong>{{ orderService.getItemCount() }}</strong>
+    <small>Total {{ orderService.formatCurrency(orderService.getTotal()) }}</small>
+  </div>
+</section>
+
+<section class="checkout-layout">
+  <div class="cart-column">
+    <p-card styleClass="order-card" header="Cart" subheader="Update quantity before placing the order">
+      @if (cartLines.length === 0) {
+        <div class="empty-state">
+          <strong>Your cart is empty</strong>
+          <span>Open a restaurant menu and add food first.</span>
+          <a routerLink="/restaurant">Browse restaurants</a>
+        </div>
+      } @else {
+        <div class="cart-list">
+          @for (line of cartLines; track line.item.id) {
+            <article class="cart-line">
+              <div>
+                <p-tag [value]="line.restaurant.name" severity="secondary" />
+                <h3>{{ line.item.name }}</h3>
+                <p>{{ orderService.formatCurrency(line.item.price) }} x {{ line.quantity }}</p>
+              </div>
+
+              <div class="line-actions">
+                <strong>{{ orderService.formatCurrency(line.item.price * line.quantity) }}</strong>
+                <div class="stepper">
+                  <p-button
+                    type="button"
+                    label="-"
+                    size="small"
+                    severity="secondary"
+                    [outlined]="true"
+                    (onClick)="removeItem(line.item)"
+                  />
+                  <b>{{ line.quantity }}</b>
+                  <p-button type="button" label="+" size="small" severity="secondary" (onClick)="addItem(line.item)" />
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+
+        <p-divider />
+
+        <div class="totals">
+          <span>Subtotal <strong>{{ orderService.formatCurrency(orderService.getSubtotal()) }}</strong></span>
+          <span>Delivery <strong>{{ orderService.formatCurrency(orderService.getDeliveryFee()) }}</strong></span>
+          <span class="grand-total">Total <strong>{{ orderService.formatCurrency(orderService.getTotal()) }}</strong></span>
+        </div>
+      }
+    </p-card>
+
+    <p-card styleClass="order-card" header="Order History" subheader="Cancel submitted orders when needed">
+      @if (orders.length === 0) {
+        <div class="empty-state compact">
+          <strong>No orders yet</strong>
+          <span>Submitted orders will appear here.</span>
+        </div>
+      } @else {
+        <div class="history-list">
+          @for (order of orders; track order.id) {
+            <article class="history-line">
+              <div>
+                <h3>#{{ order.id }} - {{ order.customerName }}</h3>
+                <p>{{ order.lines.length }} line(s), {{ orderService.formatCurrency(order.total) }}</p>
+                <span>{{ order.address }}</span>
+              </div>
+
+              <div class="history-actions">
+                <p-tag
+                  [value]="order.status"
+                  [severity]="order.status === 'Cancelled' ? 'danger' : 'success'"
+                />
+                <p-button
+                  type="button"
+                  label="Cancel"
+                  size="small"
+                  severity="danger"
+                  [outlined]="true"
+                  [disabled]="order.status === 'Cancelled'"
+                  (onClick)="cancelOrder(order.id)"
+                />
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </p-card>
+  </div>
+
+  <p-card styleClass="form-card" header="Delivery Form" subheader="Customer is the related user/entity">
+    @if (authService.currentUser(); as user) {
+      <div class="login-notice">
+        Ordering as <strong>{{ user.name }}</strong>
+      </div>
+    } @else {
+      <div class="login-notice warning">
+        Login or register before placing an order.
+        <a routerLink="/login">Login</a>
+      </div>
+    }
+
+    <form [formGroup]="deliveryForm" (ngSubmit)="submitOrder()" class="delivery-form" novalidate>
+      <label>
+        Customer name
+        <input pInputText type="text" formControlName="customerName" placeholder="Full name" />
+        <small class="field-error" [class.is-visible]="showError('customerName')">Name is required.</small>
+      </label>
+
+      <label>
+        Phone number
+        <input pInputText type="tel" formControlName="phone" placeholder="08x-xxx-xxxx" />
+        <small class="field-error" [class.is-visible]="showError('phone')">
+          Phone number is required and should be at least 9 characters.
+        </small>
+      </label>
+
+      <label class="full-field">
+        Delivery address
+        <textarea
+          pTextarea
+          rows="5"
+          formControlName="address"
+          placeholder="Building, room, street, district"
+        ></textarea>
+        <small class="field-error" [class.is-visible]="showError('address')">Delivery address is required.</small>
+      </label>
+
+      <label class="full-field">
+        Rider note
+        <input pInputText type="text" formControlName="note" placeholder="Optional" />
+      </label>
+
+      <div class="form-actions">
+        <p-button
+          type="submit"
+          label="Place Order"
+          severity="contrast"
+          [disabled]="cartLines.length === 0 || !authService.currentUser()"
+        />
+        <a routerLink="/restaurant">Add more food</a>
+      </div>
+    </form>
+
+    @if (lastOrder) {
+      <div class="success-box" role="status">
+        <strong>Order #{{ lastOrder.id }} created</strong>
+        <span>Delivery total: {{ orderService.formatCurrency(lastOrder.total) }}</span>
+      </div>
+    }
+  </p-card>
+</section>
