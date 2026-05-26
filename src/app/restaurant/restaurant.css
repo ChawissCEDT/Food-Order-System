@@ -5,8 +5,7 @@
 
 .hero,
 .detail-hero,
-.empty-state,
-:host ::ng-deep .p-card {
+.empty-state {
   border: 1px solid var(--app-line);
   border-radius: 8px;
   background: var(--app-surface);
@@ -116,8 +115,7 @@ h2 {
 .section-head,
 .restaurant-title,
 .restaurant-meta,
-.text-action,
-.stepper {
+.text-action {
   display: flex;
   align-items: center;
 }
@@ -183,6 +181,10 @@ h2 {
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-sm);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -374,7 +376,10 @@ h2 {
 
 :host ::ng-deep .menu-card {
   overflow: hidden;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
   background: linear-gradient(180deg, #ffffff 0, #fbfdff 100%) !important;
+  box-shadow: var(--app-shadow-sm);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -465,15 +470,6 @@ h2 {
 
 .menu-action strong {
   font-size: 18px;
-}
-
-.stepper {
-  gap: 8px;
-}
-
-.stepper b {
-  min-width: 28px;
-  text-align: center;
 }
 
 .empty-state {

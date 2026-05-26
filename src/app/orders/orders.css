@@ -3,8 +3,7 @@
   gap: 18px;
 }
 
-.checkout-hero,
-:host ::ng-deep .p-card {
+.checkout-hero {
   border: 1px solid var(--app-line);
   border-radius: 8px;
   background: var(--app-surface);
@@ -89,7 +88,10 @@ h1 {
 :host ::ng-deep .form-card {
   height: 100%;
   overflow: hidden;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
   background: linear-gradient(180deg, #ffffff 0, #fbfdff 100%) !important;
+  box-shadow: var(--app-shadow-sm);
 }
 
 :host ::ng-deep .order-card .p-card-body,
@@ -179,20 +181,10 @@ h1 {
   font-size: 17px;
 }
 
-.stepper,
 .totals span,
 .form-actions {
   display: flex;
   align-items: center;
-}
-
-.stepper {
-  gap: 8px;
-}
-
-.stepper b {
-  min-width: 28px;
-  text-align: center;
 }
 
 .totals {
@@ -231,16 +223,11 @@ h1 {
   font-weight: 800;
 }
 
-.field-error {
+/* orders form overrides the shared .field-error: larger min-height + line-height */
+.delivery-form .field-error {
   min-height: 34px;
-  color: var(--app-danger);
-  font-weight: 700;
+  font-size: 12px;
   line-height: 1.35;
-  visibility: hidden;
-}
-
-.field-error.is-visible {
-  visibility: visible;
 }
 
 .full-field,
