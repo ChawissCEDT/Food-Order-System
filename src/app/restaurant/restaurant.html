@@ -1,0 +1,178 @@
+@if (!selectedRestaurantId) {
+  <section class="hero">
+    <div>
+      <p-tag value="Food order system" severity="success" [rounded]="true" />
+      <h1>Choose a restaurant</h1>
+      <p>
+        Pick a shop, add food to cart, and place a delivery order.
+      </p>
+      <div class="hero-actions">
+        <a routerLink="/orders" class="primary-action">Go to cart</a>
+        <span>{{ summary.openRestaurants }} shops open now</span>
+      </div>
+    </div>
+
+    <div class="summary-grid" aria-label="Dashboard summary">
+      <div>
+        <strong>{{ summary.restaurants }}</strong>
+        <span>Restaurants</span>
+      </div>
+      <div>
+        <strong>{{ summary.openRestaurants }}</strong>
+        <span>Open now</span>
+      </div>
+      <div>
+        <strong>{{ summary.cartItems }}</strong>
+        <span>Cart items</span>
+      </div>
+      <div>
+        <strong>{{ orderService.formatCurrency(summary.revenue) }}</strong>
+        <span>Order revenue</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-head">
+    <div>
+      <p-tag value="Restaurants" severity="secondary" />
+      <h2>Restaurant list</h2>
+    </div>
+    <a routerLink="/orders" class="text-action">
+      Checkout
+      <p-badge [value]="orderService.getItemCount()" severity="contrast" />
+    </a>
+  </section>
+
+  <section class="restaurant-grid">
+    @for (restaurant of restaurants; track restaurant.id) {
+      <p-card styleClass="restaurant-card">
+        <div
+          class="restaurant-cover"
+          [class.thai]="restaurant.imageTone === 'thai'"
+          [class.pasta]="restaurant.imageTone === 'pasta'"
+          [class.burger]="restaurant.imageTone === 'burger'"
+          [class.green]="restaurant.imageTone === 'green'"
+        >
+          <span>{{ restaurant.cuisine }}</span>
+        </div>
+
+        <div class="restaurant-copy">
+          <div class="restaurant-title">
+            <div>
+              <p-tag
+                [value]="restaurant.isOpen ? 'Open' : 'Closed'"
+                [severity]="restaurant.isOpen ? 'success' : 'danger'"
+              />
+              <h3>{{ restaurant.name }}</h3>
+            </div>
+            <strong>{{ restaurant.rating }}</strong>
+          </div>
+
+          <p>{{ restaurant.description }}</p>
+
+          <div class="restaurant-meta">
+            <span>{{ restaurant.deliveryTime }}</span>
+            <span>{{ orderService.formatCurrency(restaurant.deliveryFee) }} delivery</span>
+          </div>
+
+          <a
+            class="primary-action"
+            [class.disabled]="!restaurant.isOpen"
+            [routerLink]="restaurant.isOpen ? ['/restaurant', restaurant.id] : null"
+          >
+            View menu
+          </a>
+        </div>
+      </p-card>
+    }
+  </section>
+} @else if (selectedRestaurant) {
+  <section class="detail-hero">
+    <div class="detail-copy">
+      <a routerLink="/restaurant" class="back-link">Back to restaurants</a>
+      <p-tag [value]="selectedRestaurant.cuisine" severity="success" [rounded]="true" />
+      <h1>{{ selectedRestaurant.name }}</h1>
+      <p>{{ selectedRestaurant.description }}</p>
+
+      <div class="restaurant-meta">
+        <span>{{ selectedRestaurant.deliveryTime }}</span>
+        <span>{{ orderService.formatCurrency(selectedRestaurant.deliveryFee) }} delivery</span>
+        <span>{{ selectedRestaurant.rating }} rating</span>
+      </div>
+    </div>
+
+    <div
+      class="detail-visual"
+      [class.thai]="selectedRestaurant.imageTone === 'thai'"
+      [class.pasta]="selectedRestaurant.imageTone === 'pasta'"
+      [class.burger]="selectedRestaurant.imageTone === 'burger'"
+      [class.green]="selectedRestaurant.imageTone === 'green'"
+    >
+      <a routerLink="/orders" class="checkout-box">
+        <span>Cart</span>
+        <strong>{{ orderService.getItemCount() }} item(s)</strong>
+      </a>
+    </div>
+  </section>
+
+  <section class="section-head">
+    <div>
+      <p-tag value="Menu" severity="secondary" />
+      <h2>Menu</h2>
+    </div>
+    <p>Add items before checkout.</p>
+  </section>
+
+  <section class="menu-grid">
+    @for (item of menuItems; track item.id) {
+      <p-card styleClass="menu-card">
+        <div class="menu-row">
+          <div
+            class="menu-thumb"
+            [class.rice]="item.category === 'Rice'"
+            [class.noodles]="item.category === 'Noodles'"
+            [class.drink]="item.category === 'Drink'"
+            [class.pasta-thumb]="item.category === 'Pasta'"
+            [class.side]="item.category === 'Side'"
+            [class.burger-thumb]="item.category === 'Burger'"
+            [class.bowl]="item.category === 'Bowl'"
+            [class.salad]="item.category === 'Salad'"
+          ></div>
+
+          <div>
+            <p-tag [value]="item.popular ? 'Popular' : item.category" [severity]="item.popular ? 'warn' : 'info'" />
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.description }}</p>
+            <span>{{ item.category }}</span>
+          </div>
+
+          <div class="menu-action">
+            <strong>{{ orderService.formatCurrency(item.price) }}</strong>
+            @if (orderService.quantityFor(item.id) > 0) {
+              <div class="stepper">
+                <p-button
+                  type="button"
+                  label="-"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="removeItem(item)"
+                />
+                <b>{{ orderService.quantityFor(item.id) }}</b>
+                <p-button type="button" label="+" size="small" severity="secondary" (onClick)="addItem(item)" />
+              </div>
+            } @else {
+              <p-button type="button" label="Add" size="small" (onClick)="addItem(item)" />
+            }
+          </div>
+        </div>
+      </p-card>
+    }
+  </section>
+} @else {
+  <section class="empty-state">
+    <h1>Restaurant not found</h1>
+    <p>The restaurant you opened does not exist.</p>
+    <a routerLink="/restaurant" class="primary-action">Back to restaurant list</a>
+  </section>
+}
