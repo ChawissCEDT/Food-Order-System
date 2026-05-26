@@ -108,10 +108,7 @@
       [class.burger]="selectedRestaurant.imageTone === 'burger'"
       [class.green]="selectedRestaurant.imageTone === 'green'"
     >
-      <a routerLink="/orders" class="checkout-box">
-        <span>Cart</span>
-        <strong>{{ orderService.getItemCount() }} item(s)</strong>
-      </a>
+    
     </div>
   </section>
 
@@ -125,7 +122,7 @@
 
   <section class="menu-grid">
     @for (item of menuItems; track item.id) {
-      <p-card styleClass="menu-card">
+      <p-card  class="menu-card">
         <div class="menu-row">
           <div
             class="menu-thumb"
@@ -139,11 +136,15 @@
             [class.salad]="item.category === 'Salad'"
           ></div>
 
-          <div>
-            <p-tag [value]="item.popular ? 'Popular' : item.category" [severity]="item.popular ? 'warn' : 'info'" />
+          <div class="menu-copy">
+            <div class="menu-badges">
+              @if (item.popular) {
+                <p-tag value="Popular" severity="warn" />
+              }
+              <span>{{ item.category }}</span>
+            </div>
             <h3>{{ item.name }}</h3>
             <p>{{ item.description }}</p>
-            <span>{{ item.category }}</span>
           </div>
 
           <div class="menu-action">

@@ -117,7 +117,6 @@ h2 {
 .restaurant-title,
 .restaurant-meta,
 .text-action,
-.checkout-box,
 .stepper {
   display: flex;
   align-items: center;
@@ -134,8 +133,7 @@ h2 {
 
 .text-action,
 .back-link,
-.primary-action,
-.checkout-box {
+.primary-action {
   color: inherit;
   font-weight: 900;
   text-decoration: none;
@@ -318,8 +316,7 @@ h2 {
   background: #f3f4f6;
 }
 
-.primary-action,
-.checkout-box {
+.primary-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -336,8 +333,7 @@ h2 {
   font-size: 18px;
 }
 
-.primary-action:hover,
-.checkout-box:hover {
+.primary-action:hover {
   background: var(--app-green-dark);
   transform: translateY(-1px);
 }
@@ -349,41 +345,31 @@ h2 {
 }
 
 .detail-hero {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  width: min(100%, 1080px);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  gap: 20px;
+  justify-self: center;
   overflow: hidden;
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.detail-hero + .section-head,
+.detail-hero + .section-head + .menu-grid {
+  width: min(100%, 1080px);
+  justify-self: center;
 }
 
 .detail-visual {
   display: grid;
-  min-height: 220px;
+  min-height: 190px;
   place-items: end;
   padding: 14px;
   border-radius: 8px;
 }
 
-.checkout-box {
-  display: grid;
-  width: min(190px, 100%);
-  gap: 4px;
-  align-content: center;
-  min-height: 86px;
-  background: rgba(17, 24, 39, 0.86);
-  text-align: center;
-  backdrop-filter: blur(6px);
-}
-
-.checkout-box:hover {
-  background: rgba(4, 168, 70, 0.92);
-}
-
-.checkout-box strong {
-  display: block;
-  font-size: 22px;
-}
-
 .menu-grid {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 :host ::ng-deep .menu-card {
@@ -403,15 +389,15 @@ h2 {
 
 .menu-row {
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr) minmax(150px, auto);
-  gap: 16px;
+  grid-template-columns: 104px minmax(0, 1fr) minmax(128px, auto);
+  gap: 14px;
   align-items: stretch;
-  min-height: 128px;
-  padding: 14px;
+  min-height: 116px;
+  padding: 12px;
 }
 
 .menu-thumb {
-  min-height: 100px;
+  min-height: 92px;
   border-radius: 8px;
   background-color: #f3f4f6;
 }
@@ -442,20 +428,38 @@ h2 {
   background-image: url("https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80");
 }
 
-.menu-row > div:nth-child(2) {
+.menu-copy {
   display: grid;
   align-content: center;
+  justify-items: start;
   gap: 7px;
   min-width: 0;
+}
+
+.menu-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.menu-badges > p-tag,
+.menu-badges > span {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.menu-badges > span {
+  display: inline-flex;
 }
 
 .menu-action {
   display: grid;
   align-content: center;
   justify-items: end;
-  gap: 12px;
-  min-width: 142px;
-  padding-left: 14px;
+  gap: 10px;
+  min-width: 126px;
+  padding-left: 12px;
   border-left: 1px solid var(--app-line);
 }
 
