@@ -1,0 +1,26 @@
+<section class="auth-page">
+  <p-card styleClass="auth-card" header="Login" subheader="Use your registered account to place orders">
+    <form [formGroup]="loginForm" (ngSubmit)="submitLogin()" class="auth-form" novalidate>
+      <label>
+        Email
+        <input pInputText type="email" formControlName="email" placeholder="student@email.com" />
+        <small class="field-error" [class.is-visible]="showError('email')">Valid email is required.</small>
+      </label>
+
+      <label>
+        Password
+        <input pInputText type="password" formControlName="password" placeholder="Password" />
+        <small class="field-error" [class.is-visible]="showError('password')">Password is required.</small>
+      </label>
+
+      @if (authError) {
+        <p class="auth-error">{{ authError }}</p>
+      }
+
+      <div class="auth-actions">
+        <p-button type="submit" label="Login" severity="contrast" />
+        <a routerLink="/register" [queryParams]="{ returnUrl: returnUrl }">Create account</a>
+      </div>
+    </form>
+  </p-card>
+</section>
