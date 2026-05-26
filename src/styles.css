@@ -1,1 +1,144 @@
-/* You can add global styles to this file, and also import other style files */
+@import 'tailwindcss';
+
+:root {
+  --app-green: #06c755;
+  --app-green-dark: #04a846;
+  --app-green-soft: #e9fbf0;
+  --app-ink: #111827;
+  --app-muted: #6b7280;
+  --app-line: #e5e7eb;
+  --app-line-strong: #d1d5db;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f9fafb;
+  --app-bg: #f6f7f8;
+  --app-danger: #b42318;
+  --app-shadow-sm: 0 10px 24px rgba(17, 24, 39, 0.06);
+  --app-shadow-md: 0 18px 40px rgba(17, 24, 39, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  color: var(--app-ink);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background:
+    linear-gradient(180deg, #ffffff 0, #f9fafb 180px, var(--app-bg) 420px),
+    var(--app-bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a,
+button {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(6, 199, 85, 0.22);
+  outline-offset: 2px;
+}
+
+.p-card {
+  border: 1px solid var(--app-line) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--app-shadow-sm) !important;
+  overflow: hidden;
+}
+
+.p-card-body {
+  padding: 18px !important;
+}
+
+.p-card-title {
+  color: var(--app-ink);
+  font-size: 19px !important;
+  font-weight: 800 !important;
+}
+
+.p-card-subtitle {
+  color: var(--app-muted) !important;
+  font-size: 14px !important;
+  line-height: 1.45;
+}
+
+.p-tag {
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.p-button {
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-weight: 800 !important;
+}
+
+.p-button:not(.p-button-outlined):not(.p-button-text) {
+  border-color: var(--app-green) !important;
+  background: var(--app-green) !important;
+  color: #ffffff !important;
+}
+
+.p-button:not(.p-button-outlined):not(.p-button-text):enabled:hover {
+  border-color: var(--app-green-dark) !important;
+  background: var(--app-green-dark) !important;
+  transform: translateY(-1px);
+}
+
+.p-button.p-button-outlined {
+  border-color: var(--app-line-strong) !important;
+  color: var(--app-ink) !important;
+}
+
+.p-button.p-button-outlined:enabled:hover {
+  border-color: var(--app-green) !important;
+  background: var(--app-green-soft) !important;
+  color: var(--app-green-dark) !important;
+}
+
+.p-inputtext,
+.p-textarea {
+  width: 100%;
+  border-color: var(--app-line-strong) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.p-inputtext:enabled:hover,
+.p-textarea:enabled:hover {
+  border-color: #9ca3af !important;
+}
+
+.p-inputtext:enabled:focus,
+.p-textarea:enabled:focus {
+  border-color: var(--app-green) !important;
+  box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.15) !important;
+}
+
+@media (max-width: 560px) {
+  .p-card-body {
+    padding: 16px !important;
+  }
+}
