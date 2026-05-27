@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
@@ -23,7 +23,7 @@ export class Register {
 
   submitted = false;
   passwordMismatch = false;
-  authError = '';
+  authError = signal('');
 
   readonly registerForm = this.formBuilder.nonNullable.group({
     name: ['', Validators.required],
@@ -41,7 +41,7 @@ export class Register {
 
   submitRegister(): void {
     this.submitted = true;
-    this.authError = '';
+    this.authError.set('');
     this.passwordMismatch =
       this.registerForm.controls.password.value !== this.registerForm.controls.confirmPassword.value;
 
@@ -54,13 +54,13 @@ export class Register {
     this.authService.register(request).subscribe({
       next: (result) => {
         if (!result.success) {
-          this.authError = result.error ?? 'Register failed.';
+          this.authError.set(result.error ?? 'Register failed.');
           return;
         }
         void this.router.navigateByUrl(this.returnUrl);
       },
       error: (err) => {
-        this.authError = err.error?.message ?? err.error?.Message ?? 'Register failed.';
+        this.authError.set(err.error?.message ?? err.error?.Message ?? 'Register failed.');
       }
     });
   }

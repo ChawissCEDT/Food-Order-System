@@ -8,7 +8,13 @@
       </p>
       <div class="hero-actions">
         <a routerLink="/orders" class="primary-action">Go to cart</a>
-        <span>{{ summary.openRestaurants }} shops open now</span>
+        <span>
+          @if (summary.cartItems > 0) {
+            {{ summary.cartItems }} {{ summary.cartItems === 1 ? 'item' : 'items' }} ready for checkout
+          } @else {
+            Add dishes from nearby restaurants
+          }
+        </span>
       </div>
     </div>
 
