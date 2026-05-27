@@ -1,0 +1,465 @@
+<section class="checkout-hero">
+  <div>
+    <p-tag value="Admin Portal" severity="contrast" [rounded]="true" />
+    <h1>Admin Dashboard</h1>
+    <p>
+      Monitor system metrics, toggle restaurant opening hours, and manage user orders globally.
+    </p>
+  </div>
+
+  <div class="summary-panel admin-badge">
+    <span>Logged in as</span>
+    <strong>Administrator</strong>
+    <small>{{ authService.currentUser()?.email }}</small>
+  </div>
+</section>
+
+<!-- Admin Tabs Navigation -->
+<nav class="admin-tabs" aria-label="Admin tabs">
+  <button 
+    type="button" 
+    [class.active-tab]="activeTab() === 'summary'" 
+    (click)="switchTab('summary')"
+  >
+    Overview
+  </button>
+  <button 
+    type="button" 
+    [class.active-tab]="activeTab() === 'shops'" 
+    (click)="switchTab('shops')"
+  >
+    Manage Shops
+  </button>
+  <button 
+    type="button" 
+    [class.active-tab]="activeTab() === 'orders'" 
+    (click)="switchTab('orders')"
+  >
+    Live Order Queue
+    @if (allOrders().length > 0) {
+      <span class="tab-badge">{{ allOrders().length }}</span>
+    }
+  </button>
+</nav>
+
+<div class="admin-content-layout">
+  <!-- Tab 1: Summary Overview -->
+  @if (activeTab() === 'summary') {
+    <div class="tab-panel animate-fade-in">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-title">Global Revenue</span>
+          <strong class="stat-val revenue-text">
+            {{ orderService.formatCurrency(globalSummary()?.revenue ?? 0) }}
+          </strong>
+          <span class="stat-desc">Aggregated earnings across all completed & active orders.</span>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-title">Active Order Queue</span>
+          <strong class="stat-val text-green">
+            {{ globalSummary()?.activeOrders ?? 0 }}
+          </strong>
+          <span class="stat-desc">Ongoing orders currently pending or preparing.</span>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-title">Total Restaurants</span>
+          <strong class="stat-val text-indigo">
+            {{ globalSummary()?.restaurants ?? 0 }}
+          </strong>
+          <span class="stat-desc">Seeded food joint partnerships registered.</span>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-title">Partners Open Now</span>
+          <strong class="stat-val text-orange">
+            {{ globalSummary()?.openRestaurants ?? 0 }}
+          </strong>
+          <span class="stat-desc">Shops marked as accepting deliveries.</span>
+        </div>
+      </div>
+
+      <div class="admin-welcome-card">
+        <h2>System Status: Fully Operational</h2>
+        <p>
+          You are viewing system-wide parameters. Use the tabs above to toggle restaurant operations or transition order lifecycle states.
+        </p>
+        <button type="button" class="action-btn" (click)="refreshAll()">
+          Refresh System Data
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Tab 2: Manage Shops -->
+  @if (activeTab() === 'shops') {
+    <div class="tab-panel animate-fade-in">
+
+      <!-- ===== MENU MANAGER SUB-VIEW ===== -->
+      @if (selectedShopForMenu()) {
+        <div class="shops-list-container animate-fade-in">
+          <!-- Back header -->
+          <div class="shops-list-header">
+            <div class="menu-manager-breadcrumb">
+              <button type="button" class="action-btn border-btn" (click)="closeMenuManager()">
+                ← Back to Restaurants
+              </button>
+              <div>
+                <h2>Menu: {{ selectedShopForMenu()!.name }}</h2>
+                <p class="section-subtitle">Manage all dishes — including unavailable items. Changes reflect live for customers.</p>
+              </div>
+            </div>
+            <button type="button" class="action-btn" (click)="openAddMenuForm()">
+              + Add Menu Item
+            </button>
+          </div>
+
+          <!-- Add/Edit Menu Item Form -->
+          @if (showMenuForm()) {
+            <form (submit)="saveMenuItem($event)" class="shop-form-card animate-fade-in">
+              <header class="form-header">
+                <h3>{{ editingMenuItemId() ? 'Edit Menu Item' : 'Add New Menu Item' }}</h3>
+                <button type="button" class="close-form-btn" (click)="closeMenuForm()" aria-label="Close">&times;</button>
+              </header>
+
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="menuName">Item Name *</label>
+                  <input type="text" id="menuName" name="menuName" [(ngModel)]="menuName" placeholder="e.g. Pad Thai" required />
+                </div>
+
+                <div class="form-field">
+                  <label for="menuCategory">Category *</label>
+                  <input type="text" id="menuCategory" name="menuCategory" [(ngModel)]="menuCategory" placeholder="e.g. Main Course, Dessert" required />
+                </div>
+
+                <div class="form-field">
+                  <label for="menuPrice">Price (THB) *</label>
+                  <input type="number" id="menuPrice" name="menuPrice" [(ngModel)]="menuPrice" min="1" step="1" required />
+                </div>
+
+                <div class="form-field">
+                  <label for="menuImageUrl">Image URL *</label>
+                  <input type="url" id="menuImageUrl" name="menuImageUrl" [(ngModel)]="menuImageUrl" placeholder="https://images.unsplash.com/..." required />
+                </div>
+
+                <div class="form-field full-width">
+                  <label for="menuDescription">Description *</label>
+                  <textarea id="menuDescription" name="menuDescription" [(ngModel)]="menuDescription" rows="2" placeholder="Short description of the dish..." required></textarea>
+                </div>
+
+                <div class="form-field">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="menuPopular" name="menuPopular" [(ngModel)]="menuPopular" />
+                    <span>Mark as Popular</span>
+                  </label>
+                </div>
+
+                @if (editingMenuItemId()) {
+                  <div class="form-field">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="menuIsAvailable" name="menuIsAvailable" [(ngModel)]="menuIsAvailable" />
+                      <span>Available for ordering</span>
+                    </label>
+                  </div>
+                }
+              </div>
+
+              <div class="form-actions">
+                <button type="button" class="action-btn border-btn" (click)="closeMenuForm()">Cancel</button>
+                <button type="submit" class="action-btn">{{ editingMenuItemId() ? 'Save Changes' : 'Add Item' }}</button>
+              </div>
+            </form>
+          }
+
+          <!-- Menu Items Grid -->
+          @if (menuItemsList().length === 0) {
+            <div class="empty-state">
+              <strong>No menu items yet</strong>
+              <span>Click "+ Add Menu Item" to create the first dish for this restaurant.</span>
+            </div>
+          } @else {
+            <div class="menu-items-grid">
+              @for (item of menuItemsList(); track item.id) {
+                <article class="menu-item-card" [class.unavailable-card]="!item.isAvailable">
+                  <div class="menu-item-image" [style.backgroundImage]="'url(' + item.imageUrl + ')'">
+                    @if (item.popular) {
+                      <span class="popular-badge">⭐ Popular</span>
+                    }
+                    @if (!item.isAvailable) {
+                      <span class="unavailable-overlay">Unavailable</span>
+                    }
+                  </div>
+                  <div class="menu-item-body">
+                    <div class="menu-item-meta">
+                      <span class="menu-category-tag">{{ item.category }}</span>
+                      <strong class="menu-price">THB {{ item.price.toLocaleString() }}</strong>
+                    </div>
+                    <h4 class="menu-item-name">{{ item.name }}</h4>
+                    <p class="menu-item-desc">{{ item.description }}</p>
+                  </div>
+                  <footer class="menu-item-footer">
+                    <p-button
+                      type="button"
+                      icon="pi pi-pencil"
+                      label="Edit"
+                      severity="secondary"
+                      size="small"
+                      (onClick)="openEditMenuForm(item)"
+                    />
+                    <p-button
+                      type="button"
+                      icon="pi pi-trash"
+                      label="Delete"
+                      severity="danger"
+                      size="small"
+                      [outlined]="true"
+                      (onClick)="deleteMenuItem(item.id)"
+                    />
+                  </footer>
+                </article>
+              }
+            </div>
+          }
+        </div>
+
+      <!-- ===== RESTAURANT LIST VIEW ===== -->
+      } @else {
+        <div class="shops-list-container">
+          <div class="shops-list-header">
+            <div>
+              <h2>Partner Restaurants</h2>
+              <p class="section-subtitle">Toggle online status, configure details, or register new culinary partners.</p>
+            </div>
+            <button type="button" class="action-btn" (click)="openAddForm()">
+              + Add Restaurant
+            </button>
+          </div>
+
+          <!-- Collapsible Add/Edit Form -->
+          @if ((showForm())) {
+            <form (submit)="saveRestaurant($event)" class="shop-form-card animate-fade-in">
+              <header class="form-header">
+                <h3>{{ editingShopId() ? 'Edit Restaurant Configuration' : 'Register New Partner Restaurant' }}</h3>
+                <button type="button" class="close-form-btn" (click)="closeForm()" aria-label="Close form">&times;</button>
+              </header>
+
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="shopName">Restaurant Name *</label>
+                  <input type="text" id="shopName" name="shopName" [(ngModel)]="shopName" placeholder="e.g. Somtum Der" required />
+                </div>
+
+                <div class="form-field">
+                  <label for="shopCuisine">Cuisine Category *</label>
+                  <input type="text" id="shopCuisine" name="shopCuisine" [(ngModel)]="shopCuisine" placeholder="e.g. Thai, Italian, Burgers" required />
+                </div>
+
+                <div class="form-field">
+                  <label for="shopDeliveryTime">Estimated Delivery Time *</label>
+                  <input type="text" id="shopDeliveryTime" name="shopDeliveryTime" [(ngModel)]="shopDeliveryTime" placeholder="e.g. 20-30 min" required />
+                </div>
+
+                <div class="form-field">
+                  <label for="shopDeliveryFee">Delivery Fee (THB) *</label>
+                  <input type="number" id="shopDeliveryFee" name="shopDeliveryFee" [(ngModel)]="shopDeliveryFee" min="0" step="1" required />
+                </div>
+
+                <div class="form-field">
+                  <label for="shopRating">Rating (1.0 to 5.0)</label>
+                  <input type="number" id="shopRating" name="shopRating" [(ngModel)]="shopRating" min="1" max="5" step="0.1" required />
+                </div>
+
+                <div class="form-field">
+                  <label for="shopImageTone">Color Tone Theme</label>
+                  <select id="shopImageTone" name="shopImageTone" [(ngModel)]="shopImageTone">
+                    <option value="thai">Thai (Red/Warm)</option>
+                    <option value="pasta">Pasta (Yellow/Wheat)</option>
+                    <option value="burger">Burger (Brown/Charcoal)</option>
+                    <option value="green">Green (Healthy/Fresh)</option>
+                  </select>
+                </div>
+
+                <div class="form-field full-width">
+                  <label for="shopImageUrl">Image URL *</label>
+                  <input type="url" id="shopImageUrl" name="shopImageUrl" [(ngModel)]="shopImageUrl" placeholder="https://images.unsplash.com/..." required />
+                </div>
+
+                <div class="form-field full-width">
+                  <label for="shopDescription">Restaurant Description *</label>
+                  <textarea id="shopDescription" name="shopDescription" [(ngModel)]="shopDescription" rows="3" placeholder="Brief tagline or description..." required></textarea>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" class="action-btn border-btn" (click)="closeForm()">Cancel</button>
+                <button type="submit" class="action-btn">{{ editingShopId() ? 'Save Changes' : 'Register Restaurant' }}</button>
+              </div>
+            </form>
+          }
+
+          <div class="shops-table">
+            @for (shop of restaurantsList; track shop.id) {
+              <div class="shop-row-card">
+                <div class="shop-row-info">
+                  <div class="shop-avatar" [style.backgroundImage]="'url(' + shop.imageUrl + ')'"></div>
+                  <div>
+                    <h3>{{ shop.name }}</h3>
+                    <span class="cuisine-tag">{{ shop.cuisine }}</span>
+                    <p class="shop-desc">{{ shop.description }}</p>
+                  </div>
+                </div>
+
+                <div class="shop-row-actions">
+                  <span class="status-badge" [class.open-badge]="shop.isOpen">
+                    {{ shop.isOpen ? 'Accepting Orders' : 'Offline / Closed' }}
+                  </span>
+                  
+                  <p-button 
+                    type="button" 
+                    [label]="shop.isOpen ? 'Close Shop' : 'Open Shop'"
+                    [severity]="shop.isOpen ? 'danger' : 'success'"
+                    [outlined]="true"
+                    (onClick)="toggleShop(shop.id)"
+                  />
+
+                  <p-button 
+                    type="button" 
+                    icon="pi pi-list"
+                    label="Menu"
+                    severity="info"
+                    size="small"
+                    (onClick)="openMenuManager(shop)"
+                  />
+
+                  <p-button 
+                    type="button" 
+                    icon="pi pi-pencil" 
+                    label="Edit"
+                    severity="secondary"
+                    size="small"
+                    (onClick)="openEditForm(shop)"
+                  />
+
+                  <p-button 
+                    type="button" 
+                    icon="pi pi-trash" 
+                    label="Delete"
+                    severity="danger"
+                    size="small"
+                    [outlined]="true"
+                    (onClick)="deleteRestaurant(shop.id)"
+                  />
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Tab 3: Live Order Queue -->
+  @if (activeTab() === 'orders') {
+    <div class="tab-panel animate-fade-in">
+      <div class="orders-list-header">
+        <div>
+          <h2>Order Queue Management</h2>
+          <p class="section-subtitle">Fulfill, transition status, or cancel user bookings.</p>
+        </div>
+        <button type="button" class="action-btn border-btn" (click)="loadAllOrders()">
+          Sync Live Queue
+        </button>
+      </div>
+
+      @if (allOrders().length === 0) {
+        <div class="empty-state">
+          <strong>No orders present in the system yet</strong>
+          <span>Partner database is empty or awaiting customers.</span>
+        </div>
+      } @else {
+        <div class="admin-orders-grid">
+          @for (order of allOrders(); track order.id) {
+            <article class="admin-order-card">
+              <header class="order-header">
+                <div>
+                  <span class="order-id">Order #{{ order.id }}</span>
+                  <span class="order-date">{{ order.createdAt | date:'mediumTime' }}</span>
+                </div>
+                <p-tag 
+                  [value]="order.status" 
+                  [severity]="order.status === 'Cancelled' ? 'danger' : order.status === 'Completed' ? 'success' : order.status === 'Preparing' ? 'warn' : 'secondary'"
+                />
+              </header>
+
+              <div class="order-body">
+                <div class="customer-info-box">
+                  <strong>Customer Details</strong>
+                  <p><span>Name:</span> {{ order.customerName }}</p>
+                  <p><span>Phone:</span> {{ order.phone }}</p>
+                  <p><span>Address:</span> {{ order.address }}</p>
+                  @if (order.note) {
+                    <p class="rider-note-text"><span>Note:</span> "{{ order.note }}"</p>
+                  }
+                </div>
+
+                <div class="items-info-box">
+                  <strong>Cart Summary</strong>
+                  <p class="summary-desc">{{ order.description }}</p>
+                  <div class="price-summary">
+                    <span>Subtotal: {{ orderService.formatCurrency(order.subtotal) }}</span>
+                    <span>Delivery: {{ orderService.formatCurrency(order.deliveryFee) }}</span>
+                    <strong class="total-summary">Total: {{ orderService.formatCurrency(order.total) }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <footer class="order-footer">
+                <div class="status-btn-group">
+                  <p-button 
+                    type="button" 
+                    label="Prepare" 
+                    size="small" 
+                    severity="warn"
+                    [outlined]="order.status !== 'Preparing'"
+                    [disabled]="order.status === 'Cancelled' || order.status === 'Completed'"
+                    (onClick)="updateStatus(order.id, 'Preparing')"
+                  />
+                  <p-button 
+                    type="button" 
+                    label="Complete" 
+                    size="small" 
+                    severity="success"
+                    [outlined]="order.status !== 'Completed'"
+                    [disabled]="order.status === 'Cancelled'"
+                    (onClick)="updateStatus(order.id, 'Completed')"
+                  />
+                  <p-button 
+                    type="button" 
+                    label="Cancel" 
+                    size="small" 
+                    severity="danger"
+                    [outlined]="true"
+                    [disabled]="order.status === 'Cancelled'"
+                    (onClick)="updateStatus(order.id, 'Cancelled')"
+                  />
+                </div>
+
+                <p-button 
+                  type="button" 
+                  icon="pi pi-trash" 
+                  severity="danger"
+                  label="Delete"
+                  [outlined]="true"
+                  size="small"
+                  (onClick)="deleteOrder(order.id)"
+                />
+              </footer>
+            </article>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

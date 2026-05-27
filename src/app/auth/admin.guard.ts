@@ -3,19 +3,27 @@ import { CanActivateFn, Router } from '@angular/router';
 import { isPlatformServer } from '@angular/common';
 import { AuthService } from './auth.service';
 
-export const authGuard: CanActivateFn = (_route, state) => {
+export const adminGuard: CanActivateFn = (_route, state) => {
   const platformId = inject(PLATFORM_ID);
+  if (isPlatformServer(platformId)) {
+    return true;
+  }
+
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (!isPlatformBrowser(platformId)) {
+  const currentUser = authService.currentUser();
+
+  if (currentUser && currentUser.role === 'Admin') {
     return true;
   }
 
-  if (authService.isLoggedIn()) {
-    return true;
+  // If logged in but not admin, redirect to restaurant list
+  if (currentUser) {
+    return router.createUrlTree(['/restaurant']);
   }
 
+  // Otherwise, redirect to login
   return router.createUrlTree(['/login'], {
     queryParams: {
       returnUrl: state.url

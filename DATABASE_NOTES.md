@@ -1,18 +1,21 @@
 # Food Order System Database Notes
 
-## จุดที่ตอนนี้ยังเป็น mock/hardcoded
-
-- `src/app/food-order.service.ts`
-  - `restaurants`: รายชื่อร้าน, ประเภทอาหาร, description, rating, delivery time, delivery fee, open/closed เป็น seed data ในหน้า frontend
-  - `menuItems`: รายการอาหาร, category, ราคา, popular เป็น seed data ใน frontend
-  - `cartLines`: ตะกร้าอยู่ใน memory เท่านั้น refresh แล้วหาย
-  - `orders`, `nextOrderId`: ประวัติ order และเลข order อยู่ใน memory เท่านั้น refresh แล้วหาย
-  - `getDashboardSummary()`: ตัวเลข dashboard/revenue คำนวณจาก array mock
+## ✅ Integrated with Backend (no longer mock/localStorage)
 
 - `src/app/auth/auth.service.ts`
-  - user register/login เก็บใน `localStorage` key `food-order-users`
-  - session ผู้ใช้เก็บใน `localStorage` key `food-order-current-user`
-  - password ยังเป็น plain text สำหรับ demo เท่านั้น ของจริงต้องเก็บเป็น `password_hash`
+  - user register/login → `POST /api/users/register` and `POST /api/users/login`
+  - password stored as `password_hash` via `PasswordHasher` on backend
+  - **session** ผู้ใช้ยังเก็บใน `localStorage` key `food-order-current-user` (client-side session สำหรับ reload)
+
+- `src/app/food-order.service.ts`
+  - `restaurants`: ดึงจาก `GET /api/restaurants`
+  - `menuItems`: ดึงจาก `GET /api/restaurants/{id}/menu`
+  - `cartLines` (logged-in user): ✅ เก็บใน database ผ่าน `CartController` — sync อัตโนมัติ, merge จาก guest cart เมื่อ login
+  - `cartLines` (guest/ไม่ได้ login): ยังใช้ `localStorage` key `food-order-cart` (cleared เมื่อ login)
+  - `orders`, `orderItems`: ดึงจาก `GET /api/orders?userId=` / สร้างผ่าน `POST /api/orders`
+  - `getDashboardSummary()`: ดึงจาก `GET /api/dashboard/summary?userId=`
+
+## จุดที่ยังเป็น mock/hardcoded
 
 - `src/app/restaurant/restaurant.css`
   - รูปร้าน/รูปเมนูเป็น placeholder จาก Unsplash และผูกกับ class/category

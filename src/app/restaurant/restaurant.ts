@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Badge } from 'primeng/badge';
 import { Button } from 'primeng/button';
@@ -13,11 +13,15 @@ import { FoodOrderService, MenuItemRecord, RestaurantRecord } from '../food-orde
   templateUrl: './restaurant.html',
   styleUrl: './restaurant.css'
 })
-export class Restaurant {
+export class Restaurant implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly authService = inject(AuthService);
   readonly orderService = inject(FoodOrderService);
+
+  ngOnInit(): void {
+    this.orderService.loadRestaurants();
+  }
 
   get selectedRestaurantId(): number | null {
     const id = this.route.snapshot.paramMap.get('id');
