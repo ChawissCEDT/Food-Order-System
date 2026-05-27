@@ -42,14 +42,18 @@ export class Login {
       return;
     }
 
-    const result = this.authService.login(this.loginForm.getRawValue());
-
-    if (!result.success) {
-      this.authError = result.error ?? 'Login failed.';
-      return;
-    }
-
-    void this.router.navigateByUrl(this.returnUrl);
+    this.authService.login(this.loginForm.getRawValue()).subscribe({
+      next: (result) => {
+        if (!result.success) {
+          this.authError = result.error ?? 'Login failed.';
+          return;
+        }
+        void this.router.navigateByUrl(this.returnUrl);
+      },
+      error: (err) => {
+        this.authError = err.error?.message ?? err.error?.Message ?? 'Login failed.';
+      }
+    });
   }
 
   get returnUrl(): string {

@@ -51,14 +51,18 @@ export class Register {
     }
 
     const { confirmPassword, ...request } = this.registerForm.getRawValue();
-    const result = this.authService.register(request);
-
-    if (!result.success) {
-      this.authError = result.error ?? 'Register failed.';
-      return;
-    }
-
-    void this.router.navigateByUrl(this.returnUrl);
+    this.authService.register(request).subscribe({
+      next: (result) => {
+        if (!result.success) {
+          this.authError = result.error ?? 'Register failed.';
+          return;
+        }
+        void this.router.navigateByUrl(this.returnUrl);
+      },
+      error: (err) => {
+        this.authError = err.error?.message ?? err.error?.Message ?? 'Register failed.';
+      }
+    });
   }
 
   get returnUrl(): string {
