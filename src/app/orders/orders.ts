@@ -29,7 +29,7 @@ export class Orders {
 
   readonly deliveryForm = this.formBuilder.nonNullable.group({
     customerName: ['', Validators.required],
-    phone: ['', [Validators.required, Validators.minLength(9)]],
+    phone: ['', [Validators.required, Validators.minLength(9), Validators.maxLength(10), Validators.pattern(/^\d+$/)]],
     address: ['', Validators.required],
     note: ['']
   });
@@ -103,6 +103,16 @@ export class Orders {
 
   cancelOrder(orderId: number): void {
     this.orderService.cancelOrder(orderId);
+  }
+
+  deleteOrder(order: FoodOrderRecord): void {
+    if (order.status !== 'Cancelled') {
+      return;
+    }
+
+    this.orderService.deleteOrder(order.id).subscribe({
+      error: (err) => console.error('Failed to delete order', err)
+    });
   }
 
   editingOrderId: number | null = null;

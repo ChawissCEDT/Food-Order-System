@@ -183,6 +183,13 @@ h1 {
   font-size: 17px;
 }
 
+:host ::ng-deep .delete-order-button.p-button.p-button-outlined,
+:host ::ng-deep .delete-order-button.p-button.p-button-outlined:enabled:hover {
+  border-color: var(--app-line-strong) !important;
+  background: transparent !important;
+  color: var(--app-danger) !important;
+}
+
 .totals span,
 .form-actions {
   display: flex;

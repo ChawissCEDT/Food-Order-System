@@ -21,9 +21,16 @@
 
       <label>
         Phone
-        <input pInputText type="tel" formControlName="phone" placeholder="08x-xxx-xxxx" />
+        <input
+          pInputText
+          type="tel"
+          formControlName="phone"
+          placeholder="0812345678"
+          inputmode="numeric"
+          maxlength="10"
+        />
         <small class="field-error" [class.is-visible]="showError('phone')"
-          >Phone should be at least 9 characters.</small
+          >Phone must contain only 9-10 digits.</small
         >
       </label>
 

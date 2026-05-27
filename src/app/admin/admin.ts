@@ -5,7 +5,6 @@ import { Button } from 'primeng/button';
 import { Tag } from 'primeng/tag';
 import { FoodOrderService, FoodOrderRecord, RestaurantRecord, MenuItemRecord } from '../food-order.service';
 import { AuthService } from '../auth/auth.service';
-import { Signal } from '@angular/core';
 
 @Component({
   selector: 'app-admin',
@@ -148,17 +147,17 @@ export class Admin implements OnInit {
     }
 
     const payload = {
-      name: this.shopName,
-      cuisine: this.shopCuisine,
-      description: this.shopDescription,
-      deliveryTime: this.shopDeliveryTime,
-      deliveryFee: this.shopDeliveryFee,
-      rating: this.shopRating,
-      imageTone: this.shopImageTone,
-      imageUrl: this.shopImageUrl
+      name: this.shopName(),
+      cuisine: this.shopCuisine(),
+      description: this.shopDescription(),
+      deliveryTime: this.shopDeliveryTime(),
+      deliveryFee: this.shopDeliveryFee(),
+      rating: this.shopRating(),
+      imageTone: this.shopImageTone(),
+      imageUrl: this.shopImageUrl()
     };
 
-    if (this.editingShopId) {
+    if (this.editingShopId()) {
       const existing = this.restaurantsList.find(r => r.id === this.editingShopId());
       const updatePayload = {
         ...payload,
@@ -262,16 +261,16 @@ export class Admin implements OnInit {
     }
 
     const payload = {
-      name: this.menuName,
-      description: this.menuDescription,
-      category: this.menuCategory,
-      imageUrl: this.menuImageUrl,
-      price: this.menuPrice,
-      popular: this.menuPopular,
-      isAvailable: this.menuIsAvailable
+      name: this.menuName(),
+      description: this.menuDescription(),
+      category: this.menuCategory(),
+      imageUrl: this.menuImageUrl(),
+      price: this.menuPrice(),
+      popular: this.menuPopular(),
+      isAvailable: this.menuIsAvailable()
     };
 
-    if (this.editingMenuItemId) {
+    if (this.editingMenuItemId()) {
       this.orderService.updateMenuItemAdmin(this.editingMenuItemId()!, payload).subscribe({
         next: () => {
           this.closeMenuForm();

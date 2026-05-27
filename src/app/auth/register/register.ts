@@ -28,7 +28,7 @@ export class Register {
   readonly registerForm = this.formBuilder.nonNullable.group({
     name: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
-    phone: ['', [Validators.required, Validators.minLength(9)]],
+    phone: ['', [Validators.required, Validators.minLength(9), Validators.maxLength(10), Validators.pattern(/^\d+$/)]],
     address: ['', Validators.required],
     password: ['', [Validators.required, Validators.minLength(6)]],
     confirmPassword: ['', Validators.required]

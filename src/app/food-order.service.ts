@@ -301,6 +301,19 @@ export class FoodOrderService {
     });
   }
 
+  deleteOrder(orderId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/orders/${orderId}`).pipe(
+      map(() => {
+        this.ordersSignal.update((orders) => orders.filter((order) => order.id !== orderId));
+
+        const user = this.authService.currentUser();
+        if (user) {
+          this.loadDashboardSummary(user.id);
+        }
+      })
+    );
+  }
+
   getGlobalDashboardSummaryAdmin(): Observable<DashboardSummaryRecord> {
     return this.http.get<DashboardSummaryRecord>(`${this.apiUrl}/dashboard/summary`);
   }

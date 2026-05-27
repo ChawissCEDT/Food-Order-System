@@ -184,15 +184,27 @@
                         [disabled]="order.status === 'Cancelled'"
                         (onClick)="startEdit(order)"
                       />
-                      <p-button
-                        type="button"
-                        label="Cancel"
-                        size="small"
-                        severity="danger"
-                        [outlined]="true"
-                        [disabled]="order.status === 'Cancelled'"
-                        (onClick)="cancelOrder(order.id)"
-                      />
+                      @if (order.status !== 'Cancelled') {
+                        <p-button
+                          type="button"
+                          label="Cancel"
+                          size="small"
+                          severity="danger"
+                          [outlined]="true"
+                          (onClick)="cancelOrder(order.id)"
+                        />
+                      }
+                      @if (order.status === 'Cancelled') {
+                        <p-button
+                          type="button"
+                          label="Delete"
+                          size="small"
+                          severity="danger"
+                          [outlined]="true"
+                          styleClass="delete-order-button"
+                          (onClick)="deleteOrder(order)"
+                        />
+                      }
                     </div>
                   </div>
                 </div>
@@ -231,9 +243,16 @@
 
       <label>
         Phone number
-        <input pInputText type="tel" formControlName="phone" placeholder="08x-xxx-xxxx" />
+        <input
+          pInputText
+          type="tel"
+          formControlName="phone"
+          placeholder="0812345678"
+          inputmode="numeric"
+          maxlength="10"
+        />
         <small class="field-error" [class.is-visible]="showError('phone')">
-          Phone number is required and should be at least 9 characters.
+          Phone number must contain only 9-10 digits.
         </small>
       </label>
 

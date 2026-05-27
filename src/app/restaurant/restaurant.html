@@ -40,7 +40,6 @@
 
   <section class="section-head">
     <div>
-      <p-tag value="Restaurants" severity="secondary" />
       <h2>Restaurant list</h2>
     </div>
     <a routerLink="/orders" class="text-action">
@@ -54,10 +53,7 @@
       <p-card styleClass="restaurant-card">
         <div
           class="restaurant-cover"
-          [class.thai]="restaurant.imageTone === 'thai'"
-          [class.pasta]="restaurant.imageTone === 'pasta'"
-          [class.burger]="restaurant.imageTone === 'burger'"
-          [class.green]="restaurant.imageTone === 'green'"
+          [style.backgroundImage]="restaurant.imageUrl ? 'url(' + restaurant.imageUrl + ')' : null"
         >
           <span>{{ restaurant.cuisine }}</span>
         </div>
@@ -109,10 +105,7 @@
 
     <div
       class="detail-visual"
-      [class.thai]="selectedRestaurant.imageTone === 'thai'"
-      [class.pasta]="selectedRestaurant.imageTone === 'pasta'"
-      [class.burger]="selectedRestaurant.imageTone === 'burger'"
-      [class.green]="selectedRestaurant.imageTone === 'green'"
+      [style.backgroundImage]="selectedRestaurant.imageUrl ? 'url(' + selectedRestaurant.imageUrl + ')' : null"
     >
     
     </div>
@@ -120,7 +113,6 @@
 
   <section class="section-head">
     <div>
-      <p-tag value="Menu" severity="secondary" />
       <h2>Menu</h2>
     </div>
     <p>Add items before checkout.</p>
@@ -132,14 +124,7 @@
         <div class="menu-row">
           <div
             class="menu-thumb"
-            [class.rice]="item.category === 'Rice'"
-            [class.noodles]="item.category === 'Noodles'"
-            [class.drink]="item.category === 'Drink'"
-            [class.pasta-thumb]="item.category === 'Pasta'"
-            [class.side]="item.category === 'Side'"
-            [class.burger-thumb]="item.category === 'Burger'"
-            [class.bowl]="item.category === 'Bowl'"
-            [class.salad]="item.category === 'Salad'"
+            [style.backgroundImage]="item.imageUrl ? 'url(' + item.imageUrl + ')' : null"
           ></div>
 
           <div class="menu-copy">
