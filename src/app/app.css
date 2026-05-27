@@ -184,11 +184,6 @@ main {
     padding: 10px;
   }
 
-  .brand > span {
-    width: 36px;
-    height: 36px;
-  }
-
   nav a,
   .auth-link,
   .auth-button,
