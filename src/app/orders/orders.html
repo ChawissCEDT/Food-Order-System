@@ -2,7 +2,9 @@
   <div>
     <p-tag value="Checkout" severity="success" [rounded]="true" />
     <h1>Checkout</h1>
-    <p>Check your cart and fill in the delivery details.</p>
+    <p>
+      Check your cart and fill in the delivery details.
+    </p>
   </div>
 
   <div class="summary-panel">
@@ -14,11 +16,7 @@
 
 <section class="checkout-layout">
   <div class="cart-column">
-    <p-card
-      styleClass="order-card"
-      header="Cart"
-      subheader="Update quantity before placing the order"
-    >
+    <p-card styleClass="order-card" header="Cart" subheader="Update quantity before placing the order">
       @if (cartLines.length === 0) {
         <div class="empty-state">
           <strong>Your cart is empty</strong>
@@ -47,13 +45,7 @@
                     (onClick)="removeItem(line.item)"
                   />
                   <b>{{ line.quantity }}</b>
-                  <p-button
-                    type="button"
-                    label="+"
-                    size="small"
-                    severity="secondary"
-                    (onClick)="addItem(line.item)"
-                  />
+                  <p-button type="button" label="+" size="small" severity="secondary" (onClick)="addItem(line.item)" />
                 </div>
               </div>
             </article>
@@ -63,26 +55,14 @@
         <p-divider />
 
         <div class="totals">
-          <span
-            >Subtotal
-            <strong>{{ orderService.formatCurrency(orderService.getSubtotal()) }}</strong></span
-          >
-          <span
-            >Delivery
-            <strong>{{ orderService.formatCurrency(orderService.getDeliveryFee()) }}</strong></span
-          >
-          <span class="grand-total"
-            >Total <strong>{{ orderService.formatCurrency(orderService.getTotal()) }}</strong></span
-          >
+          <span>Subtotal <strong>{{ orderService.formatCurrency(orderService.getSubtotal()) }}</strong></span>
+          <span>Delivery <strong>{{ orderService.formatCurrency(orderService.getDeliveryFee()) }}</strong></span>
+          <span class="grand-total">Total <strong>{{ orderService.formatCurrency(orderService.getTotal()) }}</strong></span>
         </div>
       }
     </p-card>
 
-    <p-card
-      styleClass="order-card"
-      header="Order History"
-      subheader="Cancel submitted orders when needed"
-    >
+    <p-card styleClass="order-card" header="Order History" subheader="Cancel submitted orders when needed">
       @if (orders.length === 0) {
         <div class="empty-state compact">
           <strong>No orders yet</strong>
@@ -91,90 +71,42 @@
       } @else {
         <div class="history-list">
           @for (order of orders; track order.id) {
-            <article
-              class="history-line"
-              style="flex-direction: column; align-items: stretch; gap: 0.5rem"
-            >
+            <article class="history-line" style="flex-direction: column; align-items: stretch; gap: 0.5rem;">
               @if (editingOrderId === order.id) {
-                <div class="edit-form" style="display: flex; flex-direction: column; gap: 0.5rem">
+                <div class="edit-form" style="display: flex; flex-direction: column; gap: 0.5rem;">
                   <h3>Edit Order #{{ order.id }}</h3>
-                  <label style="display: flex; flex-direction: column; gap: 0.2rem">
+                  <label style="display: flex; flex-direction: column; gap: 0.2rem;">
                     Delivery Address:
-                    <textarea
-                      pTextarea
-                      rows="2"
-                      [(ngModel)]="editAddress"
-                      style="width: 100%"
-                    ></textarea>
+                    <textarea pTextarea rows="2" [(ngModel)]="editAddress" style="width: 100%;"></textarea>
                   </label>
-                  <label style="display: flex; flex-direction: column; gap: 0.2rem">
+                  <label style="display: flex; flex-direction: column; gap: 0.2rem;">
                     Rider Note:
-                    <input pInputText type="text" [(ngModel)]="editNote" style="width: 100%" />
+                    <input pInputText type="text" [(ngModel)]="editNote" style="width: 100%;" />
                   </label>
-                  <div
-                    style="
-                      display: flex;
-                      gap: 0.5rem;
-                      justify-content: flex-end;
-                      margin-top: 0.5rem;
-                    "
-                  >
-                    <p-button
-                      type="button"
-                      label="Save"
-                      size="small"
-                      severity="success"
-                      (onClick)="saveEdit(order.id)"
-                    ></p-button>
-                    <p-button
-                      type="button"
-                      label="Cancel"
-                      size="small"
-                      severity="secondary"
-                      [outlined]="true"
-                      (onClick)="cancelEdit()"
-                    ></p-button>
+                  <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem;">
+                    <p-button type="button" label="Save" size="small" severity="success" (onClick)="saveEdit(order.id)"></p-button>
+                    <p-button type="button" label="Cancel" size="small" severity="secondary" [outlined]="true" (onClick)="cancelEdit()"></p-button>
                   </div>
                 </div>
               } @else {
-                <div
-                  style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    width: 100%;
-                  "
-                >
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
                   <div>
                     <h3>#{{ order.id }} - {{ order.customerName }}</h3>
-                    <p>
-                      {{ order.lines.length }} line(s),
-                      {{ orderService.formatCurrency(order.total) }}
-                    </p>
-                    <span style="font-size: 0.85rem; color: var(--text-color-secondary)">{{
-                      order.address
-                    }}</span>
+                    <p>{{ order.lines.length }} line(s), {{ orderService.formatCurrency(order.total) }}</p>
+                    <span style="font-size: 0.85rem; color: var(--text-color-secondary);">{{ order.address }}</span>
                     @if (order.note) {
-                      <div style="font-size: 0.8rem; color: #ff9800; margin-top: 0.2rem">
+                      <div style="font-size: 0.8rem; color: #ff9800; margin-top: 0.2rem;">
                         Note: {{ order.note }}
                       </div>
                     }
                   </div>
 
-                  <div
-                    class="history-actions"
-                    style="
-                      display: flex;
-                      flex-direction: column;
-                      gap: 0.5rem;
-                      align-items: flex-end;
-                    "
-                  >
+                  <div class="history-actions" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
                     <p-tag
                       [value]="order.status"
                       [severity]="order.status === 'Cancelled' ? 'danger' : 'success'"
                     />
-                    <div style="display: flex; gap: 0.2rem">
+                    <div style="display: flex; gap: 0.2rem;">
                       <p-button
                         type="button"
                         label="Edit"
@@ -204,11 +136,7 @@
     </p-card>
   </div>
 
-  <p-card
-    styleClass="form-card"
-    header="Delivery Form"
-    subheader="Customer is the related user/entity"
-  >
+  <p-card styleClass="form-card" header="Delivery Form" subheader="Customer is the related user/entity">
     @if (authService.currentUser(); as user) {
       <div class="login-notice">
         Ordering as <strong>{{ user.name }}</strong>
@@ -224,9 +152,7 @@
       <label>
         Customer name
         <input pInputText type="text" formControlName="customerName" placeholder="Full name" />
-        <small class="field-error" [class.is-visible]="showError('customerName')"
-          >Name is required.</small
-        >
+        <small class="field-error" [class.is-visible]="showError('customerName')">Name is required.</small>
       </label>
 
       <label>
@@ -245,9 +171,7 @@
           formControlName="address"
           placeholder="Building, room, street, district"
         ></textarea>
-        <small class="field-error" [class.is-visible]="showError('address')"
-          >Delivery address is required.</small
-        >
+        <small class="field-error" [class.is-visible]="showError('address')">Delivery address is required.</small>
       </label>
 
       <label class="full-field">
