@@ -48,10 +48,7 @@
       <p-card styleClass="restaurant-card">
         <div
           class="restaurant-cover"
-          [class.thai]="restaurant.imageTone === 'thai'"
-          [class.pasta]="restaurant.imageTone === 'pasta'"
-          [class.burger]="restaurant.imageTone === 'burger'"
-          [class.green]="restaurant.imageTone === 'green'"
+          [style.backgroundImage]="'url(' + restaurant.imageUrl + ')'"
         >
           <span>{{ restaurant.cuisine }}</span>
         </div>
@@ -103,10 +100,7 @@
 
     <div
       class="detail-visual"
-      [class.thai]="selectedRestaurant.imageTone === 'thai'"
-      [class.pasta]="selectedRestaurant.imageTone === 'pasta'"
-      [class.burger]="selectedRestaurant.imageTone === 'burger'"
-      [class.green]="selectedRestaurant.imageTone === 'green'"
+      [style.backgroundImage]="'url(' + selectedRestaurant.imageUrl + ')'"
     >
     
     </div>
@@ -126,14 +120,7 @@
         <div class="menu-row">
           <div
             class="menu-thumb"
-            [class.rice]="item.category === 'Rice'"
-            [class.noodles]="item.category === 'Noodles'"
-            [class.drink]="item.category === 'Drink'"
-            [class.pasta-thumb]="item.category === 'Pasta'"
-            [class.side]="item.category === 'Side'"
-            [class.burger-thumb]="item.category === 'Burger'"
-            [class.bowl]="item.category === 'Bowl'"
-            [class.salad]="item.category === 'Salad'"
+            [style.backgroundImage]="'url(' + item.imageUrl + ')'"
           ></div>
 
           <div class="menu-copy">
