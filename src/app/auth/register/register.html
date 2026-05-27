@@ -1,9 +1,5 @@
 <section class="auth-page">
-  <p-card
-    styleClass="auth-card"
-    header="Register"
-    subheader="Create a user account before checkout"
-  >
+  <p-card styleClass="auth-card" header="Register" subheader="Create a user account before checkout">
     <form [formGroup]="registerForm" (ngSubmit)="submitRegister()" class="auth-form" novalidate>
       <label>
         Name
@@ -14,40 +10,24 @@
       <label>
         Email
         <input pInputText type="email" formControlName="email" placeholder="student@email.com" />
-        <small class="field-error" [class.is-visible]="showError('email')"
-          >Valid email is required.</small
-        >
+        <small class="field-error" [class.is-visible]="showError('email')">Valid email is required.</small>
       </label>
 
       <label>
         Phone
         <input pInputText type="tel" formControlName="phone" placeholder="08x-xxx-xxxx" />
-        <small class="field-error" [class.is-visible]="showError('phone')"
-          >Phone should be at least 9 characters.</small
-        >
+        <small class="field-error" [class.is-visible]="showError('phone')">Phone should be at least 9 characters.</small>
       </label>
 
       <label class="full-field">
         Address
-        <textarea
-          pTextarea
-          rows="4"
-          formControlName="address"
-          placeholder="Building, room, street, district"
-        ></textarea>
-        <small class="field-error" [class.is-visible]="showError('address')"
-          >Address is required.</small
-        >
+        <textarea pTextarea rows="4" formControlName="address" placeholder="Building, room, street, district"></textarea>
+        <small class="field-error" [class.is-visible]="showError('address')">Address is required.</small>
       </label>
 
       <label>
         Password
-        <input
-          pInputText
-          type="password"
-          formControlName="password"
-          placeholder="At least 6 characters"
-        />
+        <input pInputText type="password" formControlName="password" placeholder="At least 6 characters" />
         <small class="field-error" [class.is-visible]="showError('password')">
           Password should be at least 6 characters.
         </small>
@@ -55,22 +35,14 @@
 
       <label>
         Confirm password
-        <input
-          pInputText
-          type="password"
-          formControlName="confirmPassword"
-          placeholder="Confirm password"
-        />
-        <small
-          class="field-error"
-          [class.is-visible]="showError('confirmPassword') || passwordMismatch"
-        >
+        <input pInputText type="password" formControlName="confirmPassword" placeholder="Confirm password" />
+        <small class="field-error" [class.is-visible]="showError('confirmPassword') || passwordMismatch">
           Password confirmation must match.
         </small>
       </label>
 
-      @if (authError()) {
-        <p class="auth-error">{{ authError() }}</p>
+      @if (authError) {
+        <p class="auth-error">{{ authError }}</p>
       }
 
       <div class="auth-actions">
