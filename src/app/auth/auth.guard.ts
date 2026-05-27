@@ -5,12 +5,12 @@ import { AuthService } from './auth.service';
 
 export const authGuard: CanActivateFn = (_route, state) => {
   const platformId = inject(PLATFORM_ID);
-  if (isPlatformServer(platformId)) {
-    return true;
-  }
-
   const authService = inject(AuthService);
   const router = inject(Router);
+
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
 
   if (authService.isLoggedIn()) {
     return true;
