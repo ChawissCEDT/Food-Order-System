@@ -57,6 +57,9 @@ export interface FoodOrderRecord {
   providedIn: 'root'
 })
 export class FoodOrderService {
+  // TODO(database): Replace this seed array with restaurant records from the database.
+  // Suggested fields: id, name, cuisine, description, rating, delivery_time,
+  // delivery_fee, image_url/image_tone, is_open, created_at, and updated_at.
   private readonly restaurants: RestaurantRecord[] = [
     {
       id: 1,
@@ -104,6 +107,9 @@ export class FoodOrderService {
     }
   ];
 
+  // TODO(database): Replace this seed menu with menu_items joined to restaurants.
+  // Suggested fields: id, restaurant_id, name, description, category, price,
+  // is_popular, image_url, is_available, created_at, and updated_at.
   private readonly menuItems: MenuItemRecord[] = [
     {
       id: 101,
@@ -206,8 +212,13 @@ export class FoodOrderService {
     }
   ];
 
+  // TODO(database/session): This cart is only in memory and disappears on refresh.
+  // Persist cart items by user/session if the cart must survive reloads.
   private cartLines: CartLineRecord[] = [];
+  // TODO(database): Orders are currently in memory only. Persist order headers and
+  // order_items rows so history, revenue, and cancellation work after refresh.
   private orders: FoodOrderRecord[] = [];
+  // TODO(database): Let the database generate order IDs instead of using a local counter.
   private nextOrderId = 1001;
 
   getRestaurants(): RestaurantRecord[] {
@@ -293,6 +304,8 @@ export class FoodOrderService {
   }
 
   createOrder(delivery: DeliveryFormValue): FoodOrderRecord {
+    // TODO(api/database): Create the order in a backend transaction:
+    // insert the order header, insert order item snapshots, then clear the persisted cart.
     const order: FoodOrderRecord = {
       id: this.nextOrderId,
       userId: delivery.userId ?? null,
@@ -316,6 +329,8 @@ export class FoodOrderService {
   }
 
   cancelOrder(orderId: number): void {
+    // TODO(api/database): Update the order status in the database, scoped to
+    // the current user or an authorized staff/admin role.
     const order = this.orders.find((currentOrder) => currentOrder.id === orderId);
 
     if (order && order.status !== 'Cancelled') {
@@ -324,6 +339,8 @@ export class FoodOrderService {
   }
 
   getDashboardSummary() {
+    // TODO(database): These summary values are calculated from local mock arrays.
+    // For production, fetch aggregate counts/revenue from database queries.
     return {
       restaurants: this.restaurants.length,
       openRestaurants: this.restaurants.filter((restaurant) => restaurant.isOpen).length,

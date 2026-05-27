@@ -29,6 +29,7 @@ export interface AuthResult {
 }
 
 interface StoredUserRecord extends AuthUserResponseDto {
+  // TODO(security): Never store raw passwords in a real database; store password_hash.
   password: string;
 }
 
@@ -36,7 +37,11 @@ interface StoredUserRecord extends AuthUserResponseDto {
   providedIn: 'root'
 })
 export class AuthService {
+  // TODO(database): localStorage is only a front-end mock user store.
+  // Replace registration/login with backend auth endpoints and a real users table.
   private readonly usersKey = 'food-order-users';
+  // TODO(auth): This is client-only demo session state. Use a server-issued
+  // session or JWT strategy for production.
   private readonly sessionKey = 'food-order-current-user';
   private readonly currentUserSignal = signal<AuthUserResponseDto | null>(this.loadCurrentUser());
 
@@ -52,6 +57,7 @@ export class AuthService {
       return { success: false, error: 'This email is already registered.' };
     }
 
+    // TODO(database): Date.now() is a mock ID generator; use database-generated IDs.
     const user: StoredUserRecord = {
       id: Date.now(),
       name: request.name.trim(),
@@ -70,6 +76,7 @@ export class AuthService {
 
   login(request: LoginRequestDto): AuthResult {
     const email = request.email.trim().toLowerCase();
+    // TODO(api/database): Authenticate on the backend and compare password hashes there.
     const user = this.readUsers().find(
       (currentUser) => currentUser.email.toLowerCase() === email && currentUser.password === request.password
     );

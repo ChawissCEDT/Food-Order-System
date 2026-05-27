@@ -247,12 +247,44 @@ h2 {
   font-weight: 900;
 }
 
+/* Mock Unsplash images. TODO(database/assets): replace with DB image_url. */
+
+/* Restaurants */
 .thai {
   background-image: url("https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80");
 }
 
 .pasta {
   background-image: url("https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=900&q=80");
+}
+
+.burger,
+.burger-thumb {
+  background-image: url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80");
+}
+
+.green,
+.bowl,
+.salad {
+  background-image: url("https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80");
+}
+
+/* Menu thumbnails */
+.rice,
+.noodles {
+  background-image: url("https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=500&q=80");
+}
+
+.drink {
+  background-image: url("https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=500&q=80");
+}
+
+.pasta-thumb {
+  background-image: url("https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=500&q=80");
+}
+
+.side {
+  background-image: url("https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?auto=format&fit=crop&w=500&q=80");
 }
 
 .restaurant-copy {
@@ -397,34 +429,6 @@ h2 {
   min-height: 92px;
   border-radius: 8px;
   background-color: #f3f4f6;
-}
-
-.rice,
-.noodles {
-  background-image: url("https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=500&q=80");
-}
-
-.drink {
-  background-image: url("https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=500&q=80");
-}
-
-.pasta-thumb {
-  background-image: url("https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=500&q=80");
-}
-
-.side {
-  background-image: url("https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?auto=format&fit=crop&w=500&q=80");
-}
-
-.burger,
-.burger-thumb {
-  background-image: url("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80");
-}
-
-.green,
-.bowl,
-.salad {
-  background-image: url("https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80");
 }
 
 .menu-copy {
