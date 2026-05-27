@@ -1,6 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Injectable, computed, inject, signal, effect, PLATFORM_ID } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { isPlatformBrowser } from '@angular/common';
+import { AuthService } from './auth/auth.service';
+import { Observable, map } from 'rxjs';
 
-export type OrderStatus = 'Pending' | 'Preparing' | 'Cancelled';
+export type OrderStatus = 'Pending' | 'Preparing' | 'Cancelled' | 'Completed';
 
 export interface RestaurantRecord {
   id: number;
@@ -22,6 +26,7 @@ export interface MenuItemRecord {
   category: string;
   price: number;
   popular: boolean;
+  isAvailable?: boolean;
 }
 
 export interface CartLineRecord {
@@ -57,191 +62,75 @@ export interface FoodOrderRecord {
   providedIn: 'root'
 })
 export class FoodOrderService {
-  private readonly restaurants: RestaurantRecord[] = [
-    {
-      id: 1,
-      name: 'Siam Street Kitchen',
-      cuisine: 'Thai comfort food',
-      description: 'Fast campus delivery for rice dishes, curry, noodles, and Thai tea.',
-      rating: 4.8,
-      deliveryTime: '20-30 min',
-      deliveryFee: 35,
-      imageTone: 'thai',
-      isOpen: true
-    },
-    {
-      id: 2,
-      name: 'Pasta Lab',
-      cuisine: 'Italian bowls',
-      description: 'Creamy pasta, tomato classics, garlic bread, and quick lunch sets.',
-      rating: 4.6,
-      deliveryTime: '25-35 min',
-      deliveryFee: 40,
-      imageTone: 'pasta',
-      isOpen: true
-    },
-    {
-      id: 3,
-      name: 'Burger Yard',
-      cuisine: 'Burgers and fries',
-      description: 'Stacked burgers, loaded fries, chicken bites, and cold drinks.',
-      rating: 4.7,
-      deliveryTime: '18-28 min',
-      deliveryFee: 30,
-      imageTone: 'burger',
-      isOpen: true
-    },
-    {
-      id: 4,
-      name: 'Green Bowl',
-      cuisine: 'Healthy meals',
-      description: 'Salads, protein bowls, smoothies, and light dinner options.',
-      rating: 4.5,
-      deliveryTime: '22-32 min',
-      deliveryFee: 25,
-      imageTone: 'green',
-      isOpen: false
-    }
-  ];
+  private readonly http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
+  private readonly apiUrl = 'http://localhost:5146/api';
+  private readonly cartKey = 'food-order-cart';
 
-  private readonly menuItems: MenuItemRecord[] = [
-    {
-      id: 101,
-      restaurantId: 1,
-      name: 'Basil Chicken Rice',
-      description: 'Holy basil chicken, jasmine rice, crispy egg, and chili fish sauce.',
-      category: 'Rice',
-      price: 89,
-      popular: true
-    },
-    {
-      id: 102,
-      restaurantId: 1,
-      name: 'Tom Yum Seafood Noodles',
-      description: 'Spicy-sour broth with shrimp, squid, mushrooms, lime, and roasted chili.',
-      category: 'Noodles',
-      price: 129,
-      popular: true
-    },
-    {
-      id: 103,
-      restaurantId: 1,
-      name: 'Thai Milk Tea',
-      description: 'Strong tea, creamy milk, and light brown sugar over ice.',
-      category: 'Drink',
-      price: 45,
-      popular: false
-    },
-    {
-      id: 201,
-      restaurantId: 2,
-      name: 'Carbonara Bowl',
-      description: 'Cream sauce, smoked bacon, parmesan, black pepper, and spaghetti.',
-      category: 'Pasta',
-      price: 139,
-      popular: true
-    },
-    {
-      id: 202,
-      restaurantId: 2,
-      name: 'Pomodoro Pasta',
-      description: 'Tomato sauce, garlic, basil, olive oil, and parmesan.',
-      category: 'Pasta',
-      price: 119,
-      popular: false
-    },
-    {
-      id: 203,
-      restaurantId: 2,
-      name: 'Garlic Bread',
-      description: 'Toasted bread with garlic butter and herbs.',
-      category: 'Side',
-      price: 59,
-      popular: false
-    },
-    {
-      id: 301,
-      restaurantId: 3,
-      name: 'Classic Beef Burger',
-      description: 'Beef patty, cheddar, pickles, onion, lettuce, and house sauce.',
-      category: 'Burger',
-      price: 149,
-      popular: true
-    },
-    {
-      id: 302,
-      restaurantId: 3,
-      name: 'Chicken Bites',
-      description: 'Crispy chicken pieces with honey mustard dip.',
-      category: 'Side',
-      price: 95,
-      popular: false
-    },
-    {
-      id: 303,
-      restaurantId: 3,
-      name: 'Loaded Fries',
-      description: 'Fries with cheese sauce, bacon bits, and scallion.',
-      category: 'Side',
-      price: 99,
-      popular: true
-    },
-    {
-      id: 401,
-      restaurantId: 4,
-      name: 'Salmon Protein Bowl',
-      description: 'Grilled salmon, brown rice, edamame, corn, and sesame dressing.',
-      category: 'Bowl',
-      price: 169,
-      popular: true
-    },
-    {
-      id: 402,
-      restaurantId: 4,
-      name: 'Avocado Salad',
-      description: 'Mixed greens, avocado, tomato, cucumber, and lemon vinaigrette.',
-      category: 'Salad',
-      price: 129,
-      popular: false
-    }
-  ];
+  private readonly restaurantsSignal = signal<RestaurantRecord[]>([]);
+  private readonly menuItemsMapSignal = signal<Record<number, MenuItemRecord[]>>({});
+  private readonly cartLinesSignal = signal<CartLineRecord[]>([]);
+  private readonly ordersSignal = signal<FoodOrderRecord[]>([]);
+  private readonly dashboardSummarySignal = signal<any>(null);
 
-  private cartLines: CartLineRecord[] = [];
-  private orders: FoodOrderRecord[] = [];
-  private nextOrderId = 1001;
+  private readonly platformId = inject(PLATFORM_ID);
+
+  constructor() {
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadRestaurants();
+      this.loadCart();
+
+      // Auto-sync orders and dashboard summary when the logged-in user changes
+      effect(() => {
+        const user = this.authService.currentUser();
+        if (user) {
+          this.loadOrders(user.id);
+          this.loadDashboardSummary(user.id);
+        } else {
+          this.ordersSignal.set([]);
+          this.dashboardSummarySignal.set(null);
+        }
+      });
+    }
+  }
 
   getRestaurants(): RestaurantRecord[] {
-    return this.restaurants;
+    return this.restaurantsSignal();
   }
 
   getRestaurantById(id: number): RestaurantRecord | undefined {
-    return this.restaurants.find((restaurant) => restaurant.id === id);
+    return this.restaurantsSignal().find((restaurant) => restaurant.id === id);
   }
 
   getMenuByRestaurant(restaurantId: number): MenuItemRecord[] {
-    return this.menuItems.filter((item) => item.restaurantId === restaurantId);
+    const cached = this.menuItemsMapSignal()[restaurantId];
+    if (cached) {
+      return cached;
+    }
+    this.loadMenu(restaurantId);
+    return [];
   }
 
   getCartLines(): CartLineRecord[] {
-    return this.cartLines;
+    return this.cartLinesSignal();
   }
 
   getOrders(): FoodOrderRecord[] {
-    return this.orders;
+    return this.ordersSignal();
   }
 
   getItemCount(): number {
-    return this.cartLines.reduce((total, line) => total + line.quantity, 0);
+    return this.cartLinesSignal().reduce((total, line) => total + line.quantity, 0);
   }
 
   getSubtotal(): number {
-    return this.cartLines.reduce((total, line) => total + line.item.price * line.quantity, 0);
+    return this.cartLinesSignal().reduce((total, line) => total + line.item.price * line.quantity, 0);
   }
 
   getDeliveryFee(): number {
     const deliveryFeesByRestaurant = new Map<number, number>();
 
-    for (const line of this.cartLines) {
+    for (const line of this.cartLinesSignal()) {
       deliveryFeesByRestaurant.set(line.restaurant.id, line.restaurant.deliveryFee);
     }
 
@@ -259,84 +148,228 @@ export class FoodOrderService {
       return;
     }
 
-    const existingLine = this.cartLines.find((line) => line.item.id === item.id);
+    const lines = this.cartLinesSignal();
+    const existingLine = lines.find((line) => line.item.id === item.id);
 
     if (existingLine) {
-      existingLine.quantity += 1;
-      return;
+      this.cartLinesSignal.set(
+        lines.map((line) =>
+          line.item.id === item.id ? { ...line, quantity: line.quantity + 1 } : line
+        )
+      );
+    } else {
+      this.cartLinesSignal.set([...lines, { item, restaurant, quantity: 1 }]);
     }
-
-    this.cartLines = [...this.cartLines, { item, restaurant, quantity: 1 }];
+    this.saveCart();
   }
 
   removeFromCart(itemId: number): void {
-    const existingLine = this.cartLines.find((line) => line.item.id === itemId);
+    const lines = this.cartLinesSignal();
+    const existingLine = lines.find((line) => line.item.id === itemId);
 
     if (!existingLine) {
       return;
     }
 
     if (existingLine.quantity === 1) {
-      this.cartLines = this.cartLines.filter((line) => line.item.id !== itemId);
-      return;
+      this.cartLinesSignal.set(lines.filter((line) => line.item.id !== itemId));
+    } else {
+      this.cartLinesSignal.set(
+        lines.map((line) =>
+          line.item.id === itemId ? { ...line, quantity: line.quantity - 1 } : line
+        )
+      );
     }
-
-    existingLine.quantity -= 1;
+    this.saveCart();
   }
 
   quantityFor(itemId: number): number {
-    return this.cartLines.find((line) => line.item.id === itemId)?.quantity ?? 0;
+    return this.cartLinesSignal().find((line) => line.item.id === itemId)?.quantity ?? 0;
   }
 
   clearCart(): void {
-    this.cartLines = [];
+    this.cartLinesSignal.set([]);
+    this.saveCart();
   }
 
-  createOrder(delivery: DeliveryFormValue): FoodOrderRecord {
-    const order: FoodOrderRecord = {
-      id: this.nextOrderId,
-      userId: delivery.userId ?? null,
+  createOrder(delivery: DeliveryFormValue): Observable<FoodOrderRecord> {
+    const lines = this.cartLinesSignal();
+    const restaurantName = lines[0]?.restaurant.name ?? 'Food Order';
+    const itemsSummary = lines.map((l) => `${l.item.name} x${l.quantity}`).join(', ');
+
+    const body = {
+      title: `Order from ${restaurantName}`,
+      description: itemsSummary,
+      typeOrPriority: 'Delivery',
       customerName: delivery.customerName,
       phone: delivery.phone,
       address: delivery.address,
       note: delivery.note,
-      createdAt: new Date(),
-      status: 'Pending',
-      lines: this.cartLines.map((line) => ({ ...line })),
-      subtotal: this.getSubtotal(),
-      deliveryFee: this.getDeliveryFee(),
-      total: this.getTotal()
+      relatedUserId: delivery.userId,
+      lines: lines.map((line) => ({
+        menuItemId: line.item.id,
+        quantity: line.quantity
+      }))
     };
 
-    this.nextOrderId += 1;
-    this.orders = [order, ...this.orders];
-    this.clearCart();
+    return this.http.post<FoodOrderRecord>(`${this.apiUrl}/orders`, body).pipe(
+      map((order) => {
+        // Map backend Date string to Date object
+        const mappedOrder = {
+          ...order,
+          createdAt: new Date(order.createdAt)
+        };
 
-    return order;
+        this.ordersSignal.update((orders) => [mappedOrder, ...orders]);
+        this.clearCart();
+
+        // Refresh dashboard summary
+        const user = this.authService.currentUser();
+        if (user) {
+          this.loadDashboardSummary(user.id);
+        }
+
+        return mappedOrder;
+      })
+    );
+  }
+
+  updateOrder(orderId: number, address: string, note: string): Observable<FoodOrderRecord> {
+    return this.http.put<FoodOrderRecord>(`${this.apiUrl}/orders/${orderId}`, { address, note }).pipe(
+      map((updatedOrder) => {
+        const mapped = {
+          ...updatedOrder,
+          createdAt: new Date(updatedOrder.createdAt)
+        };
+        this.ordersSignal.update((orders) =>
+          orders.map((o) => (o.id === orderId ? { ...o, address: mapped.address, note: mapped.note } : o))
+        );
+        return mapped;
+      })
+    );
   }
 
   cancelOrder(orderId: number): void {
-    const order = this.orders.find((currentOrder) => currentOrder.id === orderId);
+    this.http.put(`${this.apiUrl}/orders/${orderId}/cancel`, {}).subscribe({
+      next: () => {
+        this.ordersSignal.update((orders) =>
+          orders.map((o) => (o.id === orderId ? { ...o, status: 'Cancelled' as OrderStatus } : o))
+        );
 
-    if (order && order.status !== 'Cancelled') {
-      order.status = 'Cancelled';
-    }
+        // Refresh dashboard summary
+        const user = this.authService.currentUser();
+        if (user) {
+          this.loadDashboardSummary(user.id);
+        }
+      },
+      error: (err) => console.error('Failed to cancel order', err)
+    });
   }
 
   getDashboardSummary() {
+    const summary = this.dashboardSummarySignal();
     return {
-      restaurants: this.restaurants.length,
-      openRestaurants: this.restaurants.filter((restaurant) => restaurant.isOpen).length,
-      menuItems: this.menuItems.length,
+      restaurants: summary?.restaurants ?? 0,
+      openRestaurants: summary?.openRestaurants ?? 0,
+      menuItems: summary?.menuItems ?? 0,
       cartItems: this.getItemCount(),
-      activeOrders: this.orders.filter((order) => order.status !== 'Cancelled').length,
-      revenue: this.orders
-        .filter((order) => order.status !== 'Cancelled')
-        .reduce((total, order) => total + order.total, 0)
+      activeOrders: summary?.activeOrders ?? 0,
+      revenue: summary?.revenue ?? 0
     };
   }
 
   formatCurrency(value: number): string {
     return `THB ${value.toLocaleString('en-US')}`;
+  }
+
+  // --- HTTP Helpers ---
+
+  private loadRestaurants(): void {
+    this.http.get<RestaurantRecord[]>(`${this.apiUrl}/restaurants`).subscribe({
+      next: (data) => this.restaurantsSignal.set(data),
+      error: (err) => console.error('Failed to load restaurants', err)
+    });
+  }
+
+  private loadMenu(restaurantId: number): void {
+    this.http.get<MenuItemRecord[]>(`${this.apiUrl}/restaurants/${restaurantId}/menu`).subscribe({
+      next: (data) => {
+        this.menuItemsMapSignal.update((map) => ({ ...map, [restaurantId]: data }));
+      },
+      error: (err) => console.error(`Failed to load menu for restaurant ${restaurantId}`, err)
+    });
+  }
+
+  private loadOrders(userId: number): void {
+    this.http.get<any[]>(`${this.apiUrl}/orders?userId=${userId}`).pipe(
+      map((orders) =>
+        orders.map((o) => ({
+          ...o,
+          createdAt: new Date(o.createdAt),
+          lines: o.lines.map((l: any) => {
+            const restaurant = this.getRestaurantById(1); // Default fallbacks or map accordingly
+            const item: MenuItemRecord = {
+              id: l.menuItemId,
+              restaurantId: 1,
+              name: l.name,
+              description: '',
+              category: '',
+              price: l.price,
+              popular: false
+            };
+            return {
+              item,
+              restaurant: restaurant ?? {
+                id: 1,
+                name: 'Restaurant',
+                cuisine: '',
+                description: '',
+                rating: 5,
+                deliveryTime: '',
+                deliveryFee: 0,
+                imageTone: 'thai',
+                isOpen: true
+              },
+              quantity: l.quantity
+            };
+          })
+        }))
+      )
+    ).subscribe({
+      next: (data) => this.ordersSignal.set(data),
+      error: (err) => console.error('Failed to load orders', err)
+    });
+  }
+
+  private loadDashboardSummary(userId: number): void {
+    this.http.get<any>(`${this.apiUrl}/dashboard/summary?userId=${userId}`).subscribe({
+      next: (data) => this.dashboardSummarySignal.set(data),
+      error: (err) => console.error('Failed to load dashboard summary', err)
+    });
+  }
+
+  // --- Cart Storage Helpers ---
+
+  private loadCart(): void {
+    if (this.hasStorage()) {
+      try {
+        const data = localStorage.getItem(this.cartKey);
+        if (data) {
+          this.cartLinesSignal.set(JSON.parse(data));
+        }
+      } catch {
+        // Ignore
+      }
+    }
+  }
+
+  private saveCart(): void {
+    if (this.hasStorage()) {
+      localStorage.setItem(this.cartKey, JSON.stringify(this.cartLinesSignal()));
+    }
+  }
+
+  private hasStorage(): boolean {
+    return typeof localStorage !== 'undefined';
   }
 }

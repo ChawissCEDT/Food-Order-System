@@ -1,4 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, catchError, map, of } from 'rxjs';
 
 export interface AuthUserResponseDto {
   id: number;
@@ -28,59 +30,42 @@ export interface AuthResult {
   error?: string;
 }
 
-interface StoredUserRecord extends AuthUserResponseDto {
-  password: string;
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly usersKey = 'food-order-users';
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = 'http://localhost:5146/api/users';
   private readonly sessionKey = 'food-order-current-user';
   private readonly currentUserSignal = signal<AuthUserResponseDto | null>(this.loadCurrentUser());
 
   readonly currentUser = this.currentUserSignal.asReadonly();
   readonly isLoggedIn = computed(() => this.currentUserSignal() !== null);
 
-  register(request: RegisterRequestDto): AuthResult {
-    const users = this.readUsers();
-    const email = request.email.trim().toLowerCase();
-    const existingUser = users.find((user) => user.email.toLowerCase() === email);
-
-    if (existingUser) {
-      return { success: false, error: 'This email is already registered.' };
-    }
-
-    const user: StoredUserRecord = {
-      id: Date.now(),
-      name: request.name.trim(),
-      email,
-      phone: request.phone.trim(),
-      address: request.address.trim(),
-      password: request.password,
-      createdAt: new Date().toISOString()
-    };
-
-    this.writeUsers([...users, user]);
-    this.setCurrentUser(this.toResponseDto(user));
-
-    return { success: true, user: this.currentUserSignal() ?? undefined };
+  register(request: RegisterRequestDto): Observable<AuthResult> {
+    return this.http.post<AuthUserResponseDto>(`${this.apiUrl}/register`, request).pipe(
+      map((user) => {
+        this.setCurrentUser(user);
+        return { success: true, user };
+      }),
+      catchError((err) => {
+        const errorMsg = err.error?.message ?? err.error?.Message ?? 'Registration failed.';
+        return of({ success: false, error: errorMsg });
+      })
+    );
   }
 
-  login(request: LoginRequestDto): AuthResult {
-    const email = request.email.trim().toLowerCase();
-    const user = this.readUsers().find(
-      (currentUser) => currentUser.email.toLowerCase() === email && currentUser.password === request.password
+  login(request: LoginRequestDto): Observable<AuthResult> {
+    return this.http.post<AuthUserResponseDto>(`${this.apiUrl}/login`, request).pipe(
+      map((user) => {
+        this.setCurrentUser(user);
+        return { success: true, user };
+      }),
+      catchError((err) => {
+        const errorMsg = err.error?.message ?? err.error?.Message ?? 'Email or password is incorrect.';
+        return of({ success: false, error: errorMsg });
+      })
     );
-
-    if (!user) {
-      return { success: false, error: 'Email or password is incorrect.' };
-    }
-
-    this.setCurrentUser(this.toResponseDto(user));
-
-    return { success: true, user: this.currentUserSignal() ?? undefined };
   }
 
   logout(): void {
@@ -99,24 +84,6 @@ export class AuthService {
     }
   }
 
-  private readUsers(): StoredUserRecord[] {
-    if (!this.hasStorage()) {
-      return [];
-    }
-
-    try {
-      return JSON.parse(localStorage.getItem(this.usersKey) ?? '[]') as StoredUserRecord[];
-    } catch {
-      return [];
-    }
-  }
-
-  private writeUsers(users: StoredUserRecord[]): void {
-    if (this.hasStorage()) {
-      localStorage.setItem(this.usersKey, JSON.stringify(users));
-    }
-  }
-
   private loadCurrentUser(): AuthUserResponseDto | null {
     if (!this.hasStorage()) {
       return null;
@@ -127,17 +94,6 @@ export class AuthService {
     } catch {
       return null;
     }
-  }
-
-  private toResponseDto(user: StoredUserRecord): AuthUserResponseDto {
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      address: user.address,
-      createdAt: user.createdAt
-    };
   }
 
   private hasStorage(): boolean {

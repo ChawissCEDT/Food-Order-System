@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
@@ -14,7 +14,7 @@ type DeliveryControl = 'customerName' | 'phone' | 'address' | 'note';
 
 @Component({
   selector: 'app-orders',
-  imports: [Button, Card, Divider, InputText, ReactiveFormsModule, RouterLink, Tag, Textarea],
+  imports: [Button, Card, Divider, InputText, ReactiveFormsModule, RouterLink, Tag, Textarea, FormsModule],
   templateUrl: './orders.html',
   styleUrl: './orders.css'
 })
@@ -81,20 +81,50 @@ export class Orders {
       return;
     }
 
-    this.lastOrder = this.orderService.createOrder({
+    this.orderService.createOrder({
       ...this.deliveryForm.getRawValue(),
       userId: user.id
+    }).subscribe({
+      next: (order) => {
+        this.lastOrder = order;
+        this.deliveryForm.reset({
+          customerName: '',
+          phone: '',
+          address: '',
+          note: ''
+        });
+        this.submitted = false;
+      },
+      error: (err) => {
+        console.error('Checkout failed', err);
+      }
     });
-    this.deliveryForm.reset({
-      customerName: '',
-      phone: '',
-      address: '',
-      note: ''
-    });
-    this.submitted = false;
   }
 
   cancelOrder(orderId: number): void {
     this.orderService.cancelOrder(orderId);
+  }
+
+  editingOrderId: number | null = null;
+  editAddress = '';
+  editNote = '';
+
+  startEdit(order: FoodOrderRecord): void {
+    this.editingOrderId = order.id;
+    this.editAddress = order.address;
+    this.editNote = order.note ?? '';
+  }
+
+  cancelEdit(): void {
+    this.editingOrderId = null;
+  }
+
+  saveEdit(orderId: number): void {
+    this.orderService.updateOrder(orderId, this.editAddress, this.editNote).subscribe({
+      next: () => {
+        this.editingOrderId = null;
+      },
+      error: (err) => console.error('Failed to update order', err)
+    });
   }
 }
