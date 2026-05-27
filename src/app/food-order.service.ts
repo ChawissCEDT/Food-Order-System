@@ -15,6 +15,7 @@ export interface RestaurantRecord {
   deliveryTime: string;
   deliveryFee: number;
   imageTone: string;
+  imageUrl: string;
   isOpen: boolean;
 }
 
@@ -24,6 +25,7 @@ export interface MenuItemRecord {
   name: string;
   description: string;
   category: string;
+  imageUrl: string;
   price: number;
   popular: boolean;
   isAvailable?: boolean;
@@ -46,6 +48,8 @@ export interface DeliveryFormValue {
 export interface FoodOrderRecord {
   id: number;
   userId: number | null;
+  relatedUserId?: number | null;
+  description: string | null;
   customerName: string;
   phone: string;
   address: string;
@@ -56,6 +60,37 @@ export interface FoodOrderRecord {
   subtotal: number;
   deliveryFee: number;
   total: number;
+}
+
+export interface DashboardSummaryRecord {
+  restaurants: number;
+  openRestaurants: number;
+  menuItems: number;
+  cartItems: number;
+  activeOrders: number;
+  revenue: number;
+}
+
+export interface RestaurantAdminPayload {
+  name: string;
+  cuisine: string;
+  description: string;
+  rating: number;
+  deliveryTime: string;
+  deliveryFee: number;
+  imageTone: string;
+  imageUrl: string;
+  isOpen?: boolean;
+}
+
+export interface MenuItemAdminPayload {
+  name: string;
+  description: string;
+  category: string;
+  imageUrl: string;
+  price: number;
+  popular: boolean;
+  isAvailable?: boolean;
 }
 
 @Injectable({
@@ -266,6 +301,125 @@ export class FoodOrderService {
     });
   }
 
+  getGlobalDashboardSummaryAdmin(): Observable<DashboardSummaryRecord> {
+    return this.http.get<DashboardSummaryRecord>(`${this.apiUrl}/dashboard/summary`);
+  }
+
+  getAllOrdersAdmin(): Observable<FoodOrderRecord[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/orders`).pipe(
+      map((orders) => orders.map((order) => this.mapOrderResponse(order)))
+    );
+  }
+
+  toggleRestaurantOpenAdmin(restaurantId: number): Observable<{ id: number; isOpen: boolean }> {
+    return this.http.put<{ id: number; isOpen: boolean }>(
+      `${this.apiUrl}/restaurants/${restaurantId}/toggle-status`,
+      {}
+    ).pipe(
+      map((result) => {
+        this.restaurantsSignal.update((restaurants) =>
+          restaurants.map((restaurant) =>
+            restaurant.id === restaurantId ? { ...restaurant, isOpen: result.isOpen } : restaurant
+          )
+        );
+        return result;
+      })
+    );
+  }
+
+  updateOrderStatusAdmin(orderId: number, status: string): Observable<{ status: string }> {
+    return this.http.put<{ status: string }>(`${this.apiUrl}/orders/${orderId}/status`, { status });
+  }
+
+  deleteOrderAdmin(orderId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/orders/${orderId}`).pipe(
+      map(() => {
+        this.ordersSignal.update((orders) => orders.filter((order) => order.id !== orderId));
+      })
+    );
+  }
+
+  createRestaurantAdmin(payload: RestaurantAdminPayload): Observable<RestaurantRecord> {
+    return this.http.post<RestaurantRecord>(`${this.apiUrl}/restaurants`, payload).pipe(
+      map((restaurant) => {
+        this.restaurantsSignal.update((restaurants) => [...restaurants, restaurant]);
+        return restaurant;
+      })
+    );
+  }
+
+  updateRestaurantAdmin(id: number, payload: RestaurantAdminPayload): Observable<RestaurantRecord> {
+    return this.http.put<RestaurantRecord>(`${this.apiUrl}/restaurants/${id}`, payload).pipe(
+      map((restaurant) => {
+        this.restaurantsSignal.update((restaurants) =>
+          restaurants.map((item) => (item.id === id ? restaurant : item))
+        );
+        return restaurant;
+      })
+    );
+  }
+
+  deleteRestaurantAdmin(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/restaurants/${id}`).pipe(
+      map(() => {
+        this.restaurantsSignal.update((restaurants) => restaurants.filter((restaurant) => restaurant.id !== id));
+        this.menuItemsMapSignal.update((map) => {
+          const { [id]: _deleted, ...rest } = map;
+          return rest;
+        });
+      })
+    );
+  }
+
+  getRestaurantMenuAdmin(restaurantId: number): Observable<MenuItemRecord[]> {
+    return this.http.get<MenuItemRecord[]>(`${this.apiUrl}/restaurants/${restaurantId}/menu-admin`).pipe(
+      map((items) => {
+        this.menuItemsMapSignal.update((map) => ({ ...map, [restaurantId]: items }));
+        return items;
+      })
+    );
+  }
+
+  createMenuItemAdmin(restaurantId: number, payload: MenuItemAdminPayload): Observable<MenuItemRecord> {
+    return this.http.post<MenuItemRecord>(`${this.apiUrl}/restaurants/${restaurantId}/menu`, payload).pipe(
+      map((item) => {
+        this.menuItemsMapSignal.update((map) => ({
+          ...map,
+          [restaurantId]: [...(map[restaurantId] ?? []), item]
+        }));
+        return item;
+      })
+    );
+  }
+
+  updateMenuItemAdmin(id: number, payload: MenuItemAdminPayload): Observable<MenuItemRecord> {
+    return this.http.put<MenuItemRecord>(`${this.apiUrl}/restaurants/menu/${id}`, payload).pipe(
+      map((item) => {
+        this.menuItemsMapSignal.update((map) => ({
+          ...map,
+          [item.restaurantId]: (map[item.restaurantId] ?? []).map((existing) =>
+            existing.id === id ? item : existing
+          )
+        }));
+        return item;
+      })
+    );
+  }
+
+  deleteMenuItemAdmin(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/restaurants/menu/${id}`).pipe(
+      map(() => {
+        this.menuItemsMapSignal.update((map) => {
+          const next = { ...map };
+          for (const restaurantId of Object.keys(next)) {
+            next[Number(restaurantId)] = next[Number(restaurantId)].filter((item) => item.id !== id);
+          }
+          return next;
+        });
+      })
+    );
+  }
+
   getDashboardSummary() {
     const summary = this.dashboardSummarySignal();
     return {
@@ -284,7 +438,7 @@ export class FoodOrderService {
 
   // --- HTTP Helpers ---
 
-  private loadRestaurants(): void {
+  loadRestaurants(): void {
     this.http.get<RestaurantRecord[]>(`${this.apiUrl}/restaurants`).subscribe({
       next: (data) => this.restaurantsSignal.set(data),
       error: (err) => console.error('Failed to load restaurants', err)
@@ -302,39 +456,7 @@ export class FoodOrderService {
 
   private loadOrders(userId: number): void {
     this.http.get<any[]>(`${this.apiUrl}/orders?userId=${userId}`).pipe(
-      map((orders) =>
-        orders.map((o) => ({
-          ...o,
-          createdAt: new Date(o.createdAt),
-          lines: o.lines.map((l: any) => {
-            const restaurant = this.getRestaurantById(1); // Default fallbacks or map accordingly
-            const item: MenuItemRecord = {
-              id: l.menuItemId,
-              restaurantId: 1,
-              name: l.name,
-              description: '',
-              category: '',
-              price: l.price,
-              popular: false
-            };
-            return {
-              item,
-              restaurant: restaurant ?? {
-                id: 1,
-                name: 'Restaurant',
-                cuisine: '',
-                description: '',
-                rating: 5,
-                deliveryTime: '',
-                deliveryFee: 0,
-                imageTone: 'thai',
-                isOpen: true
-              },
-              quantity: l.quantity
-            };
-          })
-        }))
-      )
+      map((orders) => orders.map((order) => this.mapOrderResponse(order)))
     ).subscribe({
       next: (data) => this.ordersSignal.set(data),
       error: (err) => console.error('Failed to load orders', err)
@@ -346,6 +468,49 @@ export class FoodOrderService {
       next: (data) => this.dashboardSummarySignal.set(data),
       error: (err) => console.error('Failed to load dashboard summary', err)
     });
+  }
+
+  private mapOrderResponse(order: any): FoodOrderRecord {
+    return {
+      ...order,
+      userId: order.userId ?? order.relatedUserId ?? null,
+      relatedUserId: order.relatedUserId ?? order.userId ?? null,
+      description: order.description ?? '',
+      note: order.note ?? '',
+      createdAt: new Date(order.createdAt),
+      lines: (order.lines ?? []).map((line: any) => {
+        const restaurantId = line.restaurantId ?? 1;
+        const restaurant = this.getRestaurantById(restaurantId);
+        const item: MenuItemRecord = {
+          id: line.menuItemId ?? 0,
+          restaurantId,
+          name: line.name,
+          description: '',
+          category: '',
+          imageUrl: '',
+          price: line.price,
+          popular: false,
+          isAvailable: true
+        };
+
+        return {
+          item,
+          restaurant: restaurant ?? {
+            id: restaurantId,
+            name: 'Restaurant',
+            cuisine: '',
+            description: '',
+            rating: 5,
+            deliveryTime: '',
+            deliveryFee: 0,
+            imageTone: 'thai',
+            imageUrl: '',
+            isOpen: true
+          },
+          quantity: line.quantity
+        };
+      })
+    };
   }
 
   // --- Cart Storage Helpers ---
