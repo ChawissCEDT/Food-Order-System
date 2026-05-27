@@ -15,7 +15,7 @@ export interface RestaurantRecord {
   deliveryTime: string;
   deliveryFee: number;
   imageTone: string;
-  imageUrl?: string;
+  imageUrl: string;
   isOpen: boolean;
 }
 
@@ -25,7 +25,7 @@ export interface MenuItemRecord {
   name: string;
   description: string;
   category: string;
-  imageUrl?: string;
+  imageUrl: string;
   price: number;
   popular: boolean;
   isAvailable?: boolean;
@@ -48,17 +48,49 @@ export interface DeliveryFormValue {
 export interface FoodOrderRecord {
   id: number;
   userId: number | null;
+  relatedUserId?: number | null;
+  description: string | null;
   customerName: string;
   phone: string;
   address: string;
   note: string;
-  description?: string;
   createdAt: Date;
   status: OrderStatus;
   lines: CartLineRecord[];
   subtotal: number;
   deliveryFee: number;
   total: number;
+}
+
+export interface DashboardSummaryRecord {
+  restaurants: number;
+  openRestaurants: number;
+  menuItems: number;
+  cartItems: number;
+  activeOrders: number;
+  revenue: number;
+}
+
+export interface RestaurantAdminPayload {
+  name: string;
+  cuisine: string;
+  description: string;
+  rating: number;
+  deliveryTime: string;
+  deliveryFee: number;
+  imageTone: string;
+  imageUrl: string;
+  isOpen?: boolean;
+}
+
+export interface MenuItemAdminPayload {
+  name: string;
+  description: string;
+  category: string;
+  imageUrl: string;
+  price: number;
+  popular: boolean;
+  isAvailable?: boolean;
 }
 
 @Injectable({
@@ -81,18 +113,17 @@ export class FoodOrderService {
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.loadRestaurants();
+      this.loadCart();
 
-      // Auto-sync orders, dashboard summary, and cart when the logged-in user changes
+      // Auto-sync orders and dashboard summary when the logged-in user changes
       effect(() => {
         const user = this.authService.currentUser();
         if (user) {
           this.loadOrders(user.id);
           this.loadDashboardSummary(user.id);
-          this.syncOrLoadUserCart(user.id);
         } else {
           this.ordersSignal.set([]);
           this.dashboardSummarySignal.set(null);
-          this.loadCartFromLocalStorage();
         }
       });
     }
@@ -152,34 +183,19 @@ export class FoodOrderService {
       return;
     }
 
-    const user = this.authService.currentUser();
-    if (user) {
-      this.http.post<any[]>(`${this.apiUrl}/cart/items`, {
-        userId: user.id,
-        menuItemId: item.id,
-        quantity: 1
-      }).subscribe({
-        next: (data) => {
-          this.cartLinesSignal.set(this.mapCartResponse(data));
-          this.loadDashboardSummary(user.id);
-        },
-        error: (err) => console.error('Failed to add to cart on server', err)
-      });
-    } else {
-      const lines = this.cartLinesSignal();
-      const existingLine = lines.find((line) => line.item.id === item.id);
+    const lines = this.cartLinesSignal();
+    const existingLine = lines.find((line) => line.item.id === item.id);
 
-      if (existingLine) {
-        this.cartLinesSignal.set(
-          lines.map((line) =>
-            line.item.id === item.id ? { ...line, quantity: line.quantity + 1 } : line
-          )
-        );
-      } else {
-        this.cartLinesSignal.set([...lines, { item, restaurant, quantity: 1 }]);
-      }
-      this.saveCart();
+    if (existingLine) {
+      this.cartLinesSignal.set(
+        lines.map((line) =>
+          line.item.id === item.id ? { ...line, quantity: line.quantity + 1 } : line
+        )
+      );
+    } else {
+      this.cartLinesSignal.set([...lines, { item, restaurant, quantity: 1 }]);
     }
+    this.saveCart();
   }
 
   removeFromCart(itemId: number): void {
@@ -190,31 +206,16 @@ export class FoodOrderService {
       return;
     }
 
-    const user = this.authService.currentUser();
-    if (user) {
-      this.http.post<any[]>(`${this.apiUrl}/cart/items`, {
-        userId: user.id,
-        menuItemId: itemId,
-        quantity: -1
-      }).subscribe({
-        next: (data) => {
-          this.cartLinesSignal.set(this.mapCartResponse(data));
-          this.loadDashboardSummary(user.id);
-        },
-        error: (err) => console.error('Failed to remove from cart on server', err)
-      });
+    if (existingLine.quantity === 1) {
+      this.cartLinesSignal.set(lines.filter((line) => line.item.id !== itemId));
     } else {
-      if (existingLine.quantity === 1) {
-        this.cartLinesSignal.set(lines.filter((line) => line.item.id !== itemId));
-      } else {
-        this.cartLinesSignal.set(
-          lines.map((line) =>
-            line.item.id === itemId ? { ...line, quantity: line.quantity - 1 } : line
-          )
-        );
-      }
-      this.saveCart();
+      this.cartLinesSignal.set(
+        lines.map((line) =>
+          line.item.id === itemId ? { ...line, quantity: line.quantity - 1 } : line
+        )
+      );
     }
+    this.saveCart();
   }
 
   quantityFor(itemId: number): number {
@@ -222,18 +223,8 @@ export class FoodOrderService {
   }
 
   clearCart(): void {
-    const user = this.authService.currentUser();
-    if (user) {
-      // Optimistically clear the signal immediately so the UI updates at once
-      this.cartLinesSignal.set([]);
-      this.http.delete<any[]>(`${this.apiUrl}/cart?userId=${user.id}`).subscribe({
-        next: () => this.loadDashboardSummary(user.id),
-        error: (err) => console.error('Failed to clear cart on server', err)
-      });
-    } else {
-      this.cartLinesSignal.set([]);
-      this.saveCart();
-    }
+    this.cartLinesSignal.set([]);
+    this.saveCart();
   }
 
   createOrder(delivery: DeliveryFormValue): Observable<FoodOrderRecord> {
@@ -310,67 +301,123 @@ export class FoodOrderService {
     });
   }
 
-  // --- Admin Panel API Methods ---
+  getGlobalDashboardSummaryAdmin(): Observable<DashboardSummaryRecord> {
+    return this.http.get<DashboardSummaryRecord>(`${this.apiUrl}/dashboard/summary`);
+  }
 
   getAllOrdersAdmin(): Observable<FoodOrderRecord[]> {
     return this.http.get<any[]>(`${this.apiUrl}/orders`).pipe(
-      map((orders) =>
-        orders.map((o) => ({
-          ...o,
-          createdAt: new Date(o.createdAt),
-          lines: o.lines.map((l: any) => ({
-            item: { id: l.menuItemId, name: l.name, price: l.price },
-            quantity: l.quantity
-          }))
-        }))
-      )
+      map((orders) => orders.map((order) => this.mapOrderResponse(order)))
     );
   }
 
-  getGlobalDashboardSummaryAdmin(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/dashboard/summary`);
+  toggleRestaurantOpenAdmin(restaurantId: number): Observable<{ id: number; isOpen: boolean }> {
+    return this.http.put<{ id: number; isOpen: boolean }>(
+      `${this.apiUrl}/restaurants/${restaurantId}/toggle-status`,
+      {}
+    ).pipe(
+      map((result) => {
+        this.restaurantsSignal.update((restaurants) =>
+          restaurants.map((restaurant) =>
+            restaurant.id === restaurantId ? { ...restaurant, isOpen: result.isOpen } : restaurant
+          )
+        );
+        return result;
+      })
+    );
   }
 
-  updateOrderStatusAdmin(orderId: number, status: string): Observable<any> {
-    return this.http.put(`${this.apiUrl}/orders/${orderId}/status`, { status });
+  updateOrderStatusAdmin(orderId: number, status: string): Observable<{ status: string }> {
+    return this.http.put<{ status: string }>(`${this.apiUrl}/orders/${orderId}/status`, { status });
   }
 
-  toggleRestaurantOpenAdmin(restaurantId: number): Observable<any> {
-    return this.http.put(`${this.apiUrl}/restaurants/${restaurantId}/toggle-status`, {});
+  deleteOrderAdmin(orderId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/orders/${orderId}`).pipe(
+      map(() => {
+        this.ordersSignal.update((orders) => orders.filter((order) => order.id !== orderId));
+      })
+    );
   }
 
-  deleteOrderAdmin(orderId: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/orders/${orderId}`);
+  createRestaurantAdmin(payload: RestaurantAdminPayload): Observable<RestaurantRecord> {
+    return this.http.post<RestaurantRecord>(`${this.apiUrl}/restaurants`, payload).pipe(
+      map((restaurant) => {
+        this.restaurantsSignal.update((restaurants) => [...restaurants, restaurant]);
+        return restaurant;
+      })
+    );
+  }
+
+  updateRestaurantAdmin(id: number, payload: RestaurantAdminPayload): Observable<RestaurantRecord> {
+    return this.http.put<RestaurantRecord>(`${this.apiUrl}/restaurants/${id}`, payload).pipe(
+      map((restaurant) => {
+        this.restaurantsSignal.update((restaurants) =>
+          restaurants.map((item) => (item.id === id ? restaurant : item))
+        );
+        return restaurant;
+      })
+    );
+  }
+
+  deleteRestaurantAdmin(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/restaurants/${id}`).pipe(
+      map(() => {
+        this.restaurantsSignal.update((restaurants) => restaurants.filter((restaurant) => restaurant.id !== id));
+        this.menuItemsMapSignal.update((map) => {
+          const { [id]: _deleted, ...rest } = map;
+          return rest;
+        });
+      })
+    );
   }
 
   getRestaurantMenuAdmin(restaurantId: number): Observable<MenuItemRecord[]> {
-  return this.http.get<MenuItemRecord[]>(
-    `${this.apiUrl}/restaurants/${restaurantId}/menu`  // ← remove /admin/
-  );
-}
-
-  createMenuItemAdmin(restaurantId: number, dto: any): Observable<MenuItemRecord> {
-    return this.http.post<MenuItemRecord>(`${this.apiUrl}/restaurants/${restaurantId}/menu`, dto);
+    return this.http.get<MenuItemRecord[]>(`${this.apiUrl}/restaurants/${restaurantId}/menu-admin`).pipe(
+      map((items) => {
+        this.menuItemsMapSignal.update((map) => ({ ...map, [restaurantId]: items }));
+        return items;
+      })
+    );
   }
 
-  updateMenuItemAdmin(id: number, dto: any): Observable<MenuItemRecord> {
-    return this.http.put<MenuItemRecord>(`${this.apiUrl}/restaurants/menu/${id}`, dto);
+  createMenuItemAdmin(restaurantId: number, payload: MenuItemAdminPayload): Observable<MenuItemRecord> {
+    return this.http.post<MenuItemRecord>(`${this.apiUrl}/restaurants/${restaurantId}/menu`, payload).pipe(
+      map((item) => {
+        this.menuItemsMapSignal.update((map) => ({
+          ...map,
+          [restaurantId]: [...(map[restaurantId] ?? []), item]
+        }));
+        return item;
+      })
+    );
   }
 
-  deleteMenuItemAdmin(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/restaurants/menu/${id}`);
+  updateMenuItemAdmin(id: number, payload: MenuItemAdminPayload): Observable<MenuItemRecord> {
+    return this.http.put<MenuItemRecord>(`${this.apiUrl}/restaurants/menu/${id}`, payload).pipe(
+      map((item) => {
+        this.menuItemsMapSignal.update((map) => ({
+          ...map,
+          [item.restaurantId]: (map[item.restaurantId] ?? []).map((existing) =>
+            existing.id === id ? item : existing
+          )
+        }));
+        return item;
+      })
+    );
   }
 
-  createRestaurantAdmin(dto: any): Observable<RestaurantRecord> {
-    return this.http.post<RestaurantRecord>(`${this.apiUrl}/restaurants`, dto);
-  }
-
-  updateRestaurantAdmin(id: number, dto: any): Observable<RestaurantRecord> {
-    return this.http.put<RestaurantRecord>(`${this.apiUrl}/restaurants/${id}`, dto);
-  }
-
-  deleteRestaurantAdmin(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/restaurants/${id}`);
+  deleteMenuItemAdmin(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/restaurants/menu/${id}`).pipe(
+      map(() => {
+        this.menuItemsMapSignal.update((map) => {
+          const next = { ...map };
+          for (const restaurantId of Object.keys(next)) {
+            next[Number(restaurantId)] = next[Number(restaurantId)].filter((item) => item.id !== id);
+          }
+          return next;
+        });
+      })
+    );
   }
 
   getDashboardSummary() {
@@ -409,41 +456,7 @@ export class FoodOrderService {
 
   private loadOrders(userId: number): void {
     this.http.get<any[]>(`${this.apiUrl}/orders?userId=${userId}`).pipe(
-      map((orders) =>
-        orders.map((o) => ({
-          ...o,
-          createdAt: new Date(o.createdAt),
-          lines: o.lines.map((l: any) => {
-            const restaurant = this.getRestaurantById(1); // Default fallbacks or map accordingly
-            const item: MenuItemRecord = {
-              id: l.menuItemId,
-              restaurantId: 1,
-              name: l.name,
-              description: '',
-              category: '',
-              imageUrl: '',
-              price: l.price,
-              popular: false
-            };
-            return {
-              item,
-              restaurant: restaurant ?? {
-                id: 1,
-                name: 'Restaurant',
-                cuisine: '',
-                description: '',
-                rating: 5,
-                deliveryTime: '',
-                deliveryFee: 0,
-                imageTone: 'thai',
-                imageUrl: '',
-                isOpen: true
-              },
-              quantity: l.quantity
-            };
-          })
-        }))
-      )
+      map((orders) => orders.map((order) => this.mapOrderResponse(order)))
     ).subscribe({
       next: (data) => this.ordersSignal.set(data),
       error: (err) => console.error('Failed to load orders', err)
@@ -457,94 +470,62 @@ export class FoodOrderService {
     });
   }
 
+  private mapOrderResponse(order: any): FoodOrderRecord {
+    return {
+      ...order,
+      userId: order.userId ?? order.relatedUserId ?? null,
+      relatedUserId: order.relatedUserId ?? order.userId ?? null,
+      description: order.description ?? '',
+      note: order.note ?? '',
+      createdAt: new Date(order.createdAt),
+      lines: (order.lines ?? []).map((line: any) => {
+        const restaurantId = line.restaurantId ?? 1;
+        const restaurant = this.getRestaurantById(restaurantId);
+        const item: MenuItemRecord = {
+          id: line.menuItemId ?? 0,
+          restaurantId,
+          name: line.name,
+          description: '',
+          category: '',
+          imageUrl: '',
+          price: line.price,
+          popular: false,
+          isAvailable: true
+        };
+
+        return {
+          item,
+          restaurant: restaurant ?? {
+            id: restaurantId,
+            name: 'Restaurant',
+            cuisine: '',
+            description: '',
+            rating: 5,
+            deliveryTime: '',
+            deliveryFee: 0,
+            imageTone: 'thai',
+            imageUrl: '',
+            isOpen: true
+          },
+          quantity: line.quantity
+        };
+      })
+    };
+  }
+
   // --- Cart Storage Helpers ---
 
-  private syncOrLoadUserCart(userId: number): void {
-    let localCart: CartLineRecord[] = [];
-    if (this.hasStorage()) {
-      try {
-        const data = localStorage.getItem(this.cartKey);
-        if (data) {
-          localCart = JSON.parse(data);
-        }
-      } catch {
-        // Ignore
-      }
-    }
-
-    if (localCart.length > 0) {
-      const items = localCart.map(line => ({
-        menuItemId: line.item.id,
-        quantity: line.quantity
-      }));
-      this.http.post<any[]>(`${this.apiUrl}/cart/merge`, { userId, items }).subscribe({
-        next: (data) => {
-          this.cartLinesSignal.set(this.mapCartResponse(data));
-          if (this.hasStorage()) {
-            localStorage.removeItem(this.cartKey);
-          }
-        },
-        error: (err) => {
-          console.error('Failed to merge cart', err);
-          this.loadCartFromServer(userId);
-        }
-      });
-    } else {
-      this.loadCartFromServer(userId);
-    }
-  }
-
-  private loadCartFromServer(userId: number): void {
-    this.http.get<any[]>(`${this.apiUrl}/cart?userId=${userId}`).subscribe({
-      next: (data) => this.cartLinesSignal.set(this.mapCartResponse(data)),
-      error: (err) => console.error('Failed to load cart from server', err)
-    });
-  }
-
-  private loadCartFromLocalStorage(): void {
+  private loadCart(): void {
     if (this.hasStorage()) {
       try {
         const data = localStorage.getItem(this.cartKey);
         if (data) {
           this.cartLinesSignal.set(JSON.parse(data));
-        } else {
-          this.cartLinesSignal.set([]);
         }
       } catch {
-        this.cartLinesSignal.set([]);
+        // Ignore
       }
-    } else {
-      this.cartLinesSignal.set([]);
     }
-  }
-
-  private mapCartResponse(data: any[]): CartLineRecord[] {
-    return data.map(item => ({
-      item: {
-        id: item.item.id,
-        restaurantId: item.item.restaurantId,
-        name: item.item.name,
-        description: item.item.description,
-        category: item.item.category,
-        imageUrl: item.item.imageUrl,
-        price: item.item.price,
-        popular: item.item.popular,
-        isAvailable: item.item.isAvailable
-      },
-      restaurant: {
-        id: item.restaurant.id,
-        name: item.restaurant.name,
-        cuisine: item.restaurant.cuisine,
-        description: item.restaurant.description,
-        rating: item.restaurant.rating,
-        deliveryTime: item.restaurant.deliveryTime,
-        deliveryFee: item.restaurant.deliveryFee,
-        imageTone: item.restaurant.imageTone,
-        imageUrl: item.restaurant.imageUrl,
-        isOpen: item.restaurant.isOpen
-      },
-      quantity: item.quantity
-    }));
   }
 
   private saveCart(): void {

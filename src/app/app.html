@@ -4,16 +4,12 @@
       <span>FO</span>
       <div>
         <strong>Food Order App</strong>
-        <small>Angular assignment</small>
       </div>
     </a>
 
     <nav aria-label="Main navigation">
       <a routerLink="/restaurant" routerLinkActive="active-link">Restaurants</a>
       <a routerLink="/orders" routerLinkActive="active-link">Orders</a>
-      @if (authService.currentUser()?.role === 'Admin') {
-        <a routerLink="/admin" routerLinkActive="active-link">Admin Panel</a>
-      }
     </nav>
 
     <div class="header-actions">
