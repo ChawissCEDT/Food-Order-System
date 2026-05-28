@@ -101,6 +101,7 @@ export class FoodOrderService {
   private readonly authService = inject(AuthService);
   private readonly apiUrl = 'http://localhost:5146/api';
   private readonly cartKey = 'food-order-cart';
+  private cartOwnerId: number | null = null;
 
   private readonly restaurantsSignal = signal<RestaurantRecord[]>([]);
   private readonly menuItemsMapSignal = signal<Record<number, MenuItemRecord[]>>({});
@@ -147,11 +148,16 @@ export class FoodOrderService {
         if (user) {
           this.loadOrders(user.id);
           this.loadDashboardSummary(user.id);
-          this.syncCartWithBackend(user.id);
+          if (this.cartOwnerId === null && this.cartLinesSignal().length > 0) {
+            this.syncCartWithBackend(user.id);
+          } else {
+            this.loadServerCart(user.id);
+          }
         } else {
           this.ordersSignal.set([]);
           this.dashboardSummarySignal.set(null);
           this.cartLinesSignal.set([]); // Clear cart signal on logout
+          this.cartOwnerId = null;
         }
       });
     }
@@ -217,7 +223,7 @@ export class FoodOrderService {
         quantity: 1
       }).subscribe({
         next: (updatedCart) => {
-          this.cartLinesSignal.set(updatedCart);
+          this.cartLinesSignal.set(this.mapCartResponse(updatedCart));
           this.saveCart();
         },
         error: (err) => console.error('Failed to add item to server cart', err)
@@ -255,7 +261,7 @@ export class FoodOrderService {
         quantity: -1
       }).subscribe({
         next: (updatedCart) => {
-          this.cartLinesSignal.set(updatedCart);
+          this.cartLinesSignal.set(this.mapCartResponse(updatedCart));
           this.saveCart();
         },
         error: (err) => console.error('Failed to remove item from server cart', err)
@@ -669,7 +675,14 @@ export class FoodOrderService {
       try {
         const data = localStorage.getItem(this.cartKey);
         if (data) {
-          this.cartLinesSignal.set(JSON.parse(data));
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed)) {
+            this.cartLinesSignal.set(parsed);
+            this.cartOwnerId = null;
+          } else if (parsed && Array.isArray(parsed.lines)) {
+            this.cartLinesSignal.set(parsed.lines);
+            this.cartOwnerId = parsed.userId ?? null;
+          }
         }
       } catch {
         // Ignore
@@ -679,7 +692,12 @@ export class FoodOrderService {
 
   private saveCart(): void {
     if (this.hasStorage()) {
-      localStorage.setItem(this.cartKey, JSON.stringify(this.cartLinesSignal()));
+      const user = this.authService.currentUser();
+      this.cartOwnerId = user ? user.id : null;
+      localStorage.setItem(this.cartKey, JSON.stringify({
+        userId: this.cartOwnerId,
+        lines: this.cartLinesSignal()
+      }));
     }
   }
 

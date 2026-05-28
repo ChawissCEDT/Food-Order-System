@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 
 import { Restaurant } from './restaurant';
 
@@ -15,6 +16,7 @@ describe('Restaurant', () => {
         {
           provide: ActivatedRoute,
           useValue: {
+            paramMap: of(convertToParamMap({})),
             snapshot: {
               paramMap: convertToParamMap({})
             }
