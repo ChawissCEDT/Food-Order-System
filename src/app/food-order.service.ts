@@ -109,6 +109,32 @@ export class FoodOrderService {
   private readonly dashboardSummarySignal = signal<any>(null);
 
   private readonly platformId = inject(PLATFORM_ID);
+  
+  // Track active HTTP requests to prevent duplicate parallel fetches
+  private readonly inFlightMenuRequests = new Set<number>();
+
+  // Expose signals as read-only
+  readonly cartLines = this.cartLinesSignal.asReadonly();
+  readonly orders = this.ordersSignal.asReadonly();
+
+  // Memoized derived states using Angular computed signals
+  readonly itemCount = computed(() => 
+    this.cartLinesSignal().reduce((total, line) => total + line.quantity, 0)
+  );
+
+  readonly subtotal = computed(() => 
+    this.cartLinesSignal().reduce((total, line) => total + line.item.price * line.quantity, 0)
+  );
+
+  readonly deliveryFee = computed(() => {
+    const deliveryFeesByRestaurant = new Map<number, number>();
+    for (const line of this.cartLinesSignal()) {
+      deliveryFeesByRestaurant.set(line.restaurant.id, line.restaurant.deliveryFee);
+    }
+    return Array.from(deliveryFeesByRestaurant.values()).reduce((total, fee) => total + fee, 0);
+  });
+
+  readonly total = computed(() => this.subtotal() + this.deliveryFee());
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -121,9 +147,11 @@ export class FoodOrderService {
         if (user) {
           this.loadOrders(user.id);
           this.loadDashboardSummary(user.id);
+          this.syncCartWithBackend(user.id);
         } else {
           this.ordersSignal.set([]);
           this.dashboardSummarySignal.set(null);
+          this.cartLinesSignal.set([]); // Clear cart signal on logout
         }
       });
     }
@@ -142,7 +170,11 @@ export class FoodOrderService {
     if (cached) {
       return cached;
     }
-    this.loadMenu(restaurantId);
+    
+    // Guard against duplicate active HTTP requests
+    if (!this.inFlightMenuRequests.has(restaurantId)) {
+      this.loadMenu(restaurantId);
+    }
     return [];
   }
 
@@ -155,25 +187,19 @@ export class FoodOrderService {
   }
 
   getItemCount(): number {
-    return this.cartLinesSignal().reduce((total, line) => total + line.quantity, 0);
+    return this.itemCount();
   }
 
   getSubtotal(): number {
-    return this.cartLinesSignal().reduce((total, line) => total + line.item.price * line.quantity, 0);
+    return this.subtotal();
   }
 
   getDeliveryFee(): number {
-    const deliveryFeesByRestaurant = new Map<number, number>();
-
-    for (const line of this.cartLinesSignal()) {
-      deliveryFeesByRestaurant.set(line.restaurant.id, line.restaurant.deliveryFee);
-    }
-
-    return Array.from(deliveryFeesByRestaurant.values()).reduce((total, fee) => total + fee, 0);
+    return this.deliveryFee();
   }
 
   getTotal(): number {
-    return this.getSubtotal() + this.getDeliveryFee();
+    return this.total();
   }
 
   addToCart(item: MenuItemRecord): void {
@@ -183,19 +209,34 @@ export class FoodOrderService {
       return;
     }
 
-    const lines = this.cartLinesSignal();
-    const existingLine = lines.find((line) => line.item.id === item.id);
-
-    if (existingLine) {
-      this.cartLinesSignal.set(
-        lines.map((line) =>
-          line.item.id === item.id ? { ...line, quantity: line.quantity + 1 } : line
-        )
-      );
+    const user = this.authService.currentUser();
+    if (user) {
+      this.http.post<any[]>(`${this.apiUrl}/cart/items`, {
+        userId: user.id,
+        menuItemId: item.id,
+        quantity: 1
+      }).subscribe({
+        next: (updatedCart) => {
+          this.cartLinesSignal.set(updatedCart);
+          this.saveCart();
+        },
+        error: (err) => console.error('Failed to add item to server cart', err)
+      });
     } else {
-      this.cartLinesSignal.set([...lines, { item, restaurant, quantity: 1 }]);
+      const lines = this.cartLinesSignal();
+      const existingLine = lines.find((line) => line.item.id === item.id);
+
+      if (existingLine) {
+        this.cartLinesSignal.set(
+          lines.map((line) =>
+            line.item.id === item.id ? { ...line, quantity: line.quantity + 1 } : line
+          )
+        );
+      } else {
+        this.cartLinesSignal.set([...lines, { item, restaurant, quantity: 1 }]);
+      }
+      this.saveCart();
     }
-    this.saveCart();
   }
 
   removeFromCart(itemId: number): void {
@@ -206,16 +247,31 @@ export class FoodOrderService {
       return;
     }
 
-    if (existingLine.quantity === 1) {
-      this.cartLinesSignal.set(lines.filter((line) => line.item.id !== itemId));
+    const user = this.authService.currentUser();
+    if (user) {
+      this.http.post<any[]>(`${this.apiUrl}/cart/items`, {
+        userId: user.id,
+        menuItemId: itemId,
+        quantity: -1
+      }).subscribe({
+        next: (updatedCart) => {
+          this.cartLinesSignal.set(updatedCart);
+          this.saveCart();
+        },
+        error: (err) => console.error('Failed to remove item from server cart', err)
+      });
     } else {
-      this.cartLinesSignal.set(
-        lines.map((line) =>
-          line.item.id === itemId ? { ...line, quantity: line.quantity - 1 } : line
-        )
-      );
+      if (existingLine.quantity === 1) {
+        this.cartLinesSignal.set(lines.filter((line) => line.item.id !== itemId));
+      } else {
+        this.cartLinesSignal.set(
+          lines.map((line) =>
+            line.item.id === itemId ? { ...line, quantity: line.quantity - 1 } : line
+          )
+        );
+      }
+      this.saveCart();
     }
-    this.saveCart();
   }
 
   quantityFor(itemId: number): number {
@@ -223,8 +279,19 @@ export class FoodOrderService {
   }
 
   clearCart(): void {
-    this.cartLinesSignal.set([]);
-    this.saveCart();
+    const user = this.authService.currentUser();
+    if (user) {
+      this.http.delete<any[]>(`${this.apiUrl}/cart?userId=${user.id}`).subscribe({
+        next: () => {
+          this.cartLinesSignal.set([]);
+          this.saveCart();
+        },
+        error: (err) => console.error('Failed to clear server cart', err)
+      });
+    } else {
+      this.cartLinesSignal.set([]);
+      this.saveCart();
+    }
   }
 
   createOrder(delivery: DeliveryFormValue): Observable<FoodOrderRecord> {
@@ -459,11 +526,16 @@ export class FoodOrderService {
   }
 
   private loadMenu(restaurantId: number): void {
+    this.inFlightMenuRequests.add(restaurantId);
     this.http.get<MenuItemRecord[]>(`${this.apiUrl}/restaurants/${restaurantId}/menu`).subscribe({
       next: (data) => {
         this.menuItemsMapSignal.update((map) => ({ ...map, [restaurantId]: data }));
+        this.inFlightMenuRequests.delete(restaurantId);
       },
-      error: (err) => console.error(`Failed to load menu for restaurant ${restaurantId}`, err)
+      error: (err) => {
+        console.error(`Failed to load menu for restaurant ${restaurantId}`, err);
+        this.inFlightMenuRequests.delete(restaurantId);
+      }
     });
   }
 
@@ -481,6 +553,70 @@ export class FoodOrderService {
       next: (data) => this.dashboardSummarySignal.set(data),
       error: (err) => console.error('Failed to load dashboard summary', err)
     });
+  }
+
+  private syncCartWithBackend(userId: number): void {
+    const localLines = this.cartLinesSignal();
+    const payload = {
+      userId,
+      items: localLines.map(l => ({
+        menuItemId: l.item.id,
+        quantity: l.quantity
+      }))
+    };
+
+    this.http.post<any[]>(`${this.apiUrl}/cart/merge`, payload).subscribe({
+      next: (serverCart) => {
+        const mappedCart = this.mapCartResponse(serverCart);
+        this.cartLinesSignal.set(mappedCart);
+        this.saveCart();
+      },
+      error: (err) => {
+        console.error('Failed to sync cart with backend', err);
+        // Fallback to loading server cart directly
+        this.loadServerCart(userId);
+      }
+    });
+  }
+
+  private loadServerCart(userId: number): void {
+    this.http.get<any[]>(`${this.apiUrl}/cart?userId=${userId}`).subscribe({
+      next: (serverCart) => {
+        const mappedCart = this.mapCartResponse(serverCart);
+        this.cartLinesSignal.set(mappedCart);
+        this.saveCart();
+      },
+      error: (err) => console.error('Failed to load server cart', err)
+    });
+  }
+
+  private mapCartResponse(serverCart: any[]): CartLineRecord[] {
+    return serverCart.map(ci => ({
+      item: {
+        id: ci.item.id,
+        restaurantId: ci.item.restaurantId,
+        name: ci.item.name,
+        description: ci.item.description,
+        category: ci.item.category,
+        imageUrl: ci.item.imageUrl,
+        price: ci.item.price,
+        popular: ci.item.popular,
+        isAvailable: ci.item.isAvailable
+      },
+      restaurant: {
+        id: ci.restaurant.id,
+        name: ci.restaurant.name,
+        cuisine: ci.restaurant.cuisine,
+        description: ci.restaurant.description,
+        rating: ci.restaurant.rating,
+        deliveryTime: ci.restaurant.deliveryTime,
+        deliveryFee: ci.restaurant.deliveryFee,
+        imageTone: ci.restaurant.imageTone,
+        imageUrl: ci.restaurant.imageUrl,
+        isOpen: ci.restaurant.isOpen
+      },
+      quantity: ci.quantity
+    }));
   }
 
   private mapOrderResponse(order: any): FoodOrderRecord {

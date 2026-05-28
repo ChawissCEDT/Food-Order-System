@@ -6,6 +6,7 @@ import { Login } from './auth/login/login';
 import { Register } from './auth/register/register';
 import { Orders } from './orders/orders';
 import { Restaurant } from './restaurant/restaurant';
+import { Admin } from './admin/admin';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'restaurant', pathMatch: 'full' },
