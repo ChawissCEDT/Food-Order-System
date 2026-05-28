@@ -10,6 +10,7 @@ export interface AuthUserResponseDto {
   address: string;
   role: string;
   createdAt: string;
+  token?: string;
 }
 
 export interface LoginRequestDto {
@@ -43,6 +44,10 @@ export class AuthService {
   readonly currentUser = this.currentUserSignal.asReadonly();
   readonly isLoggedIn = computed(() => this.currentUserSignal() !== null);
 
+  getToken(): string | null {
+    return this.currentUserSignal()?.token ?? null;
+  }
+
   register(request: RegisterRequestDto): Observable<AuthResult> {
     return this.http.post<AuthUserResponseDto>(`${this.apiUrl}/register`, request).pipe(
       map((user) => {
@@ -74,6 +79,7 @@ export class AuthService {
 
     if (this.hasStorage()) {
       localStorage.removeItem(this.sessionKey);
+      localStorage.removeItem('food-order-cart');
     }
   }
 
